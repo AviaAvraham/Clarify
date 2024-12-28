@@ -20,7 +20,7 @@ class ProcessTextActivity : Activity() {
         if (!Settings.canDrawOverlays(this)) {
             // Request overlay permission
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-            startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION);
+            startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION)
         } else {
             // Launch the floating view with the text
             launchFloatingService(text.toString())
