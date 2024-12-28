@@ -1,0 +1,26 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="#FFFFFF"
+    android:padding="16dp">
+
+    <!-- Close Button -->
+    <Button
+        android:id="@+id/floating_close"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:text="Close" />
+
+    <!-- TextView for floating text -->
+    <TextView
+        android:id="@+id/floating_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/floating_close"
+        android:layout_marginTop="8dp"
+        android:text="Floating Text"
+        android:textSize="16sp"
+        android:textColor="#000000" />
+</RelativeLayout>
