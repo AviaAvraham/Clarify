@@ -12,6 +12,7 @@ import android.widget.TextView
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.embedding.engine.dart.DartExecutor
 import android.util.Log
 
 
@@ -20,6 +21,20 @@ class YourFloatingService : Service() {
     private var floatingView: View? = null
     private var backgroundView: View? = null
     private lateinit var windowManager: WindowManager
+    private var flutterEngine: FlutterEngine? = null
+
+    private fun initializeFlutterEngine() {
+        if (flutterEngine == null) {
+            Log.d("YourFloatingService", "Creating new Flutter engine")
+            flutterEngine = FlutterEngine(this).apply {
+                dartExecutor.executeDartEntrypoint(
+                    DartExecutor.DartEntrypoint.createDefault()
+                )
+            }
+            // Initialize plugins if needed
+            //flutterEngine?.plugins?.add(MethodChannelPlugin())
+        }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val text = intent?.getStringExtra("extra_text") ?: "No text"
@@ -36,33 +51,40 @@ class YourFloatingService : Service() {
     }
 
     private fun callDartMethod(message: String) {
-        Log.d("YourFloatingService","Attempting to call Dart method with message: $message")
-        val flutterEngine = FlutterEngineCache.getInstance()["flutter_engine_id"]
-        if (flutterEngine != null) {
-            Log.d("YourFloatingService", "FlutterEngine found, calling method")
-            val methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.example.untitled/floating")
+        Log.d("YourFloatingService", "Attempting to call Dart method with message: $message")
+
+        initializeFlutterEngine()
+
+        flutterEngine?.let { engine ->
+            val methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.example.untitled/floating")
             methodChannel.invokeMethod("handleMessage", message, object : MethodChannel.Result {
                 override fun success(result: Any?) {
                     val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-                    textView.text = "something went wrong"
-                    Log.d("YourFloatingService","Dart method succeeded with result: $result")
+                    Log.d("YourFloatingService", "Dart method succeeded with result: $result")
                     textView.text = result as String
+                    // Clean up engine after success
+                    cleanupFlutterEngine()
                 }
                 override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-                    Log.d("YourFloatingService","Dart method error: $errorCode - $errorMessage")
-
+                    Log.d("YourFloatingService", "Dart method error: $errorCode - $errorMessage")
                     val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-                    textView.text = "Dart method error: $errorCode - $errorMessage"
+                    textView.text = "Error: $errorMessage"
+                    cleanupFlutterEngine()
                 }
                 override fun notImplemented() {
-                    Log.d("YourFloatingService","Dart method not implemented")
+                    Log.d("YourFloatingService", "Dart method not implemented")
                     val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-                    textView.text = "Dart method not implemented"
+                    textView.text = "Method not implemented"
+                    cleanupFlutterEngine()
                 }
             })
-        } else {
-            Log.d("YourFloatingService","FlutterEngine is not initialized or cached")
         }
+    }
+
+    private fun cleanupFlutterEngine() {
+        Log.d("YourFloatingService", "Cleaning up Flutter engine")
+        flutterEngine?.destroy()
+        flutterEngine = null
     }
 
     private fun createFloatingView(text: String) {
@@ -95,7 +117,7 @@ class YourFloatingService : Service() {
 
         // Set the text
         val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-        textView.text = text
+        textView.text = "Looking up '$text'..."
 
         // Add a close button
         val closeButton = floatingView!!.findViewById<Button>(R.id.floating_close)
@@ -112,8 +134,8 @@ class YourFloatingService : Service() {
             android.graphics.PixelFormat.TRANSLUCENT
         )
 
-        layoutParams.gravity = Gravity.TOP or Gravity.START
-        layoutParams.x = 100
+        layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+        layoutParams.x = 0
         layoutParams.y = 100
 
         // Add the floating view to the window

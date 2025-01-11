@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 // Enum for available models
@@ -30,7 +31,7 @@ class DuckDuckGoChat {
     'TE': 'trailers',
   };
 
-  static final CORS_SERVER_INIT = "https://avia2292.pythonanywhere.com/?url="; //"https://cors-anywhere.herokuapp.com/";
+  static final CORS_SERVER_INIT = "https://avia2292.pythonanywhere.com/cors?url="; //"https://cors-anywhere.herokuapp.com/";
   static final STATUS_URL = "https://duckduckgo.com/duckchat/v1/status";
   static final STATUS_URL_WITH_CORS = CORS_SERVER_INIT + STATUS_URL;
   static final CHAT_URL = "https://duckduckgo.com/duckchat/v1/chat";
@@ -43,7 +44,7 @@ class DuckDuckGoChat {
   // Constructor
   DuckDuckGoChat({DuckDuckGoModel? model})
       : _model = model ?? DuckDuckGoModel.gpt4oMini {
-    _fetchApiToken(); // Fetch the API token when the instance is created
+    //_fetchApiToken(); // Fetch the API token when the instance is created
   }
 
   Future<void> _fetchApiToken() async {
@@ -65,14 +66,16 @@ class DuckDuckGoChat {
     final res_headers = (jsonDecode(response.body)["headers"]);
     //print(req_headers);;
     // TODO: fix next requests!
-    if (response.statusCode == 200 &&
-        res_body['status'] == "0") {
-      _apiToken = res_headers['x-vqd-4'];
-      print("API token fetched: $_apiToken");
+    if (response.statusCode == 200) {
+      if (res_body['status'] == "0") {
+        _apiToken = res_headers['x-vqd-4'];
+        print("API token fetched: $_apiToken");
+      } else {
+        print('Error in response body: ${res_body}');
+      }
     } else {
-      print('Failed to fetch API token. Status code: ${response
-          .statusCode}, Content: ${response.body}');
-      ;
+      print('Failed to fetch API token. Status code: ${response.statusCode}, '
+          'Content: ${response.body}');
     }
   }
 
@@ -93,17 +96,20 @@ class DuckDuckGoChat {
       headers: headers,
       body: jsonEncode(payload),
     );
+    //print(response.body);
+    //print(response.headers);
+    //print(response.bodyBytes);
     if (response.statusCode == 200) {
       final words = <String>[];
       final res_body = (jsonDecode(response.body)["body"]);
-      final res_headers = (jsonDecode(response.body)["headers"]);
+      final res_headers = (jsonDecode(utf8.decode(response.bodyBytes))["headers"]);
       //print(res_body);
       for (var line in res_body.split('\n')) {
         if (line.isNotEmpty) {
           try {
             if (jsonDecode(line.substring(6)).containsKey("message")) {
-              //print(jsonDecode(line.substring(6)));
-              words.add(jsonDecode(line.substring(6))["message"]);
+              String message = jsonDecode(line.substring(6))["message"];
+              words.add(utf8.decode(message.codeUnits)); //decode using utf8
             }
           } catch (e) {
             if (line != "data: [DONE]") {
@@ -117,14 +123,16 @@ class DuckDuckGoChat {
 
       // Update the API token with the new value from the response headers
       _apiToken = res_headers['x-vqd-4'];
-
-      messages.add({'content': assistantMessage, 'role': 'assistant'});
+      messages = [];
+      //messages.add({'content': assistantMessage, 'role': 'assistant'});
       //print(messages);
       return assistantMessage; // Return the assistant's message instead of the API token
     } else {
-      print('Error - bad status code in response: ${response
-          .statusCode}, ${response.body}');
-      return "";
+      // bad response from my server! shouldn't get here normally
+      var error_string = 'Error - bad status code in response from original server: ${response
+          .statusCode}, ${response.body}';
+      print(error_string);
+      return error_string;
     }
   }
 

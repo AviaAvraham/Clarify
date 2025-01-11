@@ -89,7 +89,9 @@ class _MyHomePageState extends State<MyHomePage> {
       if (call.method == "handleMessage") {
         print("handleMessage received: ${call.arguments}");
         String message = call.arguments;
-        message = "Hello gpt, please summarize this term or text VERY shortly: $message";
+        message = "Summarize this term or text VERY shortly: '$message'. "
+            "If the term is in [Hebrew], answer in the same language, "
+            "otherwise in English";
         return await _sendMessageFromPlatform(message);
       }
       print("Unhandled method: ${call.method}");
