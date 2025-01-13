@@ -13,6 +13,16 @@ enum DuckDuckGoModel {
   final String value;
   const DuckDuckGoModel(this.value);
 }
+/*
+TODO:
+cleanup this file functions
+enhance main screen look (?) - add note to enable the settings
+cleanup a lot of comments both here and on server
+decide on a name + logo, then add to floating window
+find beta testers and mini-publish
+follow up on ddg fallback
+open a git for backend?
+ */
 
 class DuckDuckGoChat {
   static const Map<String, String> headersBase = {
@@ -35,7 +45,7 @@ class DuckDuckGoChat {
   static final STATUS_URL = "https://duckduckgo.com/duckchat/v1/status";
   static final STATUS_URL_WITH_CORS = CORS_SERVER_INIT + STATUS_URL;
   static final CHAT_URL = "https://duckduckgo.com/duckchat/v1/chat";
-  static final CHAT_URL_WITH_CORS = CORS_SERVER_INIT + CHAT_URL;
+  static final CHAT_URL_WITH_CORS = "https://avia2292.pythonanywhere.com/ai-chat";
 
   List<Map<String, String>> messages = [];
   String? _apiToken; // Private variable to hold the API token
@@ -47,6 +57,26 @@ class DuckDuckGoChat {
     //_fetchApiToken(); // Fetch the API token when the instance is created
   }
 
+  // should do post if needed... currently this is always the first request
+  Future<http.Response> _makeGetRequest(Uri url, Map<String, String> headers) async {
+    try
+    {
+      return await http.get(url, headers: headers);
+    }
+    on SocketException catch (e)
+    {
+      if (e.osError?.errorCode == 7)
+        {
+          throw "Got an error. Are you connected to the internet?";
+        }
+      else
+        {
+          print(e.osError?.errorCode);
+          rethrow;
+        }
+    }
+  }
+
   Future<void> _fetchApiToken() async {
     if (_apiToken != null) return; // Return if the token is already fetched
 
@@ -55,10 +85,13 @@ class DuckDuckGoChat {
       'x-vqd-accept': '1',
       ...headersBase,
     };
-    var response = await http.get(
-      Uri.parse(STATUS_URL_WITH_CORS),
-      headers: headers,
-    );
+
+    var response = await _makeGetRequest(Uri.parse(STATUS_URL_WITH_CORS), headers);
+    // await http.get(
+    //   Uri.parse(STATUS_URL_WITH_CORS),
+    //   headers: headers,
+    // );
+    print("after");
     //print(response.statusCode);
     //print(response.headers);
     //print(response.body);;
@@ -96,8 +129,8 @@ class DuckDuckGoChat {
       headers: headers,
       body: jsonEncode(payload),
     );
-    //print(response.body);
-    //print(response.headers);
+    print(response.body);
+    print(response.headers);
     //print(response.bodyBytes);
     if (response.statusCode == 200) {
       final words = <String>[];
@@ -167,9 +200,33 @@ class DuckDuckGoChat {
     }
   }
 
-  Future<String> callModel(String message) async {
+  Future<String> callModel(String message, bool detailedResponse) async {
     // Send the message to the specified model
-    return await sendMessage(message);
+    Uri url;
+    if (detailedResponse) {
+      url = Uri.parse('https://avia2292.pythonanywhere.com/get-detailed-response');
+    } else {
+      url = Uri.parse('https://avia2292.pythonanywhere.com/get-response');
+    }
+    final headers = {
+      'Content-Type': 'application/json',
+    };
+    final body = '{"term": "$message"}';
+
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: body,
+    );
+    print(headers);
+    print(body);
+    if (response.statusCode == 200) {
+      print('Request successful!');
+      return jsonDecode(response.body)["message"];
+    } else {
+      return 'Request failed with status code ${response.statusCode}';
+      return await sendMessage(message);
+    }
   }
 
   void main() async {

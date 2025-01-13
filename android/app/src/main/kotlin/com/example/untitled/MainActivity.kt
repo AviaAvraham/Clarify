@@ -7,6 +7,9 @@ import io.flutter.plugin.common.MethodChannel
 import android.util.Log
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
+import android.provider.Settings
+import android.os.PowerManager
+import android.net.Uri
 
 class MainActivity: FlutterActivity() {
     // Define the channel name
@@ -22,6 +25,25 @@ class MainActivity: FlutterActivity() {
                     "startFloatingService" -> {
                         Log.d("MainActivity", "Starting floating service...")
                         startService(Intent(this, YourFloatingService::class.java))
+                        result.success(null)
+                    }
+                    "checkOverlayPermission" -> {
+                        result.success(Settings.canDrawOverlays(this))
+                    }
+                    "checkBatteryOptimization" -> {
+                        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+                        result.success(powerManager.isIgnoringBatteryOptimizations(packageName))
+                    }
+                    "requestOverlayPermission" -> {
+                        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:$packageName"))
+                        startActivity(intent)
+                        result.success(null)
+                    }
+                    "requestBatteryOptimization" -> {
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            Uri.parse("package:$packageName"))
+                        startActivity(intent)
                         result.success(null)
                     }
                     else -> {

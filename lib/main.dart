@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'ddg_request.dart';
+import 'dart:io';
 
 void main() {
   runApp(const MyApp());
@@ -56,12 +58,14 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   int _counter = 0;
   String _response = '';
   final TextEditingController _controller = TextEditingController();
   DuckDuckGoChat chat = DuckDuckGoChat(model: DuckDuckGoModel.gpt4oMini);
   static const platform = MethodChannel('com.example.untitled/floating');
+  bool _hasOverlayPermission = false;
+  bool _hasBatteryOptimization = false;
 
   void _incrementCounter() {
     setState(() {
@@ -89,22 +93,153 @@ class _MyHomePageState extends State<MyHomePage> {
       if (call.method == "handleMessage") {
         print("handleMessage received: ${call.arguments}");
         String message = call.arguments;
-        message = "Summarize this term or text VERY shortly: '$message'. "
-            "If the term is in [Hebrew], answer in the same language, "
-            "otherwise in English";
-        return await _sendMessageFromPlatform(message);
+        // message = "Explain this term or text VERY shortly: '$message'. "
+        //     "If the term is in [Hebrew], answer in the same language, "
+        //     "otherwise in English";
+        var detailedResponse = false;
+        return await _sendMessageFromPlatform(message, detailedResponse);
+      } else if (call.method == "handleMoreDetails") {
+        print("handleMoreDetails received: ${call.arguments}");
+        String message = call.arguments;
+        // message = "Explain this term or text in a few sentences: '$message'."
+        //     "If the term is in [Hebrew], answer in the same language, "
+        //     "otherwise in English";
+        var detailedResponse = true;
+        return await _sendMessageFromPlatform(message, detailedResponse);
       }
       print("Unhandled method: ${call.method}");
       return null;
     });
+
+    // this generates error for the service, but nothing too bad AFAIK
+    _checkPermissions();
+
+    // Add observer for app lifecycle changes
+    WidgetsBinding.instance.addObserver(this);
   }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Trigger the permission check when the app resumes
+      print("App resumed. Rechecking permissions...");
+      Future.delayed(Duration(milliseconds: 1000), () async {
+        await _checkPermissions();
+      });
+    }
+  }
+
+
+  Future<void> _checkPermissions() async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    try {
+      final bool overlayPermission =
+          await platform.invokeMethod('checkOverlayPermission');
+      final bool batteryOptimization =
+          await platform.invokeMethod('checkBatteryOptimization');
+
+      print("Overlay permission: $overlayPermission");
+      print("Battery optimization: $batteryOptimization");
+
+      setState(() {
+        _hasOverlayPermission = overlayPermission;
+        _hasBatteryOptimization = batteryOptimization;
+      });
+    } on PlatformException catch (e) {
+      print("Failed to get permissions: '${e.message}'.");
+    }
+  }
+
+  Future<void> _requestOverlayPermission() async {
+    await platform.invokeMethod('requestOverlayPermission');
+    // Check again after a short delay to allow for permission changes
+    // Recheck permissions after a short delay to allow for permission changes
+    Future.delayed(Duration(seconds: 1), () async {
+      await _checkPermissions();
+    });
+  }
+
+  Future<void> _requestBatteryOptimization() async {
+    await platform.invokeMethod('requestBatteryOptimization');
+    // Try checking twice with a small delay in between
+    Future.delayed(Duration(seconds: 1), () async {
+      await _checkPermissions();
+    });
+  }
+
+
+  Widget _buildPermissionButtonAndroid(
+      String title, bool hasPermission, VoidCallback onRequest) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          padding: EdgeInsets.all(16),
+        ),
+        onPressed: hasPermission ? null : onRequest,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              hasPermission ? Icons.check_circle : Icons.cancel,
+              color: hasPermission ? Colors.green : Colors.red,
+            ),
+            SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget buildPermissionsButton()
+  {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return Container();
+    }
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildPermissionButtonAndroid(
+            'Display Over Other Apps',
+            _hasOverlayPermission,
+            _requestOverlayPermission,
+          ),
+          _buildPermissionButtonAndroid(
+            'Disable Battery Optimization',
+            _hasBatteryOptimization,
+            _requestBatteryOptimization,
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Future<String?> _sendMessage() async {
     print("HELLOOOOOO");
     //print("api token:" + _apiToken!);
     if (_controller.text.isNotEmpty) {
       String message = _controller.text;
-      String response = await chat.callModel(message);
+      String response = "Feature removed for now"; //await chat.callModel(message);
       _controller.clear(); // Clear the input field after sending
       _update_response(response);
       return response;
@@ -125,10 +260,7 @@ class _MyHomePageState extends State<MyHomePage> {
         // TRY THIS: Try changing the color here to a specific color (to
         // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
         // change color while the other colors stay the same.
-        backgroundColor: Theme
-            .of(context)
-            .colorScheme
-            .inversePrimary,
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
@@ -152,9 +284,10 @@ class _MyHomePageState extends State<MyHomePage> {
             // action in the IDE, or press "p" in the console), to see the
             // wireframe for each widget.
             mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[const Text(
-              'Chat with LLaMA:',
-            ),
+            children: <Widget>[
+              const Text(
+                'Chat with LLaMA:',
+              ),
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: TextField(
@@ -172,21 +305,16 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(height: 20),
               Text(
                 'Response:',
-                style: Theme
-                    .of(context)
-                    .textTheme
-                    .headlineMedium,
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
                   _response,
-                  style: Theme
-                      .of(context)
-                      .textTheme
-                      .bodyMedium,
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
+              buildPermissionsButton(),
             ],
           ),
         ),
@@ -209,12 +337,11 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<String?> _sendMessageFromPlatform(String message) async {
+  Future<String?> _sendMessageFromPlatform(String message, bool detailedResponse) async {
     print("I WAS CALLED!");
-    String response = await chat.callModel(message);
+    String response = await chat.callModel(message, detailedResponse);
     _update_response(response);
     print(response + "is my response");
     return response; // Return response to the platform
   }
-
 }
