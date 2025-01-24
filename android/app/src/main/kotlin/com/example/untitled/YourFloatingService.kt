@@ -101,7 +101,7 @@ class YourFloatingService : Service() {
                 override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
                     Log.d("YourFloatingService", "Dart method error: $errorCode - $errorMessage")
                     val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-                    textView.text = "Error: $errorMessage"
+                    textView.text = "Got an error:\n$errorMessage"
                     updateStatusEmoji(FAIL_EMOJI)
                     cleanupFlutterEngine()
                 }
@@ -139,7 +139,7 @@ class YourFloatingService : Service() {
                 override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
                     Log.d("YourFloatingService", "Dart method for more details error: $errorCode - $errorMessage")
                     val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-                    textView.text = "Error: $errorMessage"
+                    textView.text = "Got an error:\n$errorMessage"
                     updateStatusEmoji(FAIL_EMOJI)
                     cleanupFlutterEngine()
                 }

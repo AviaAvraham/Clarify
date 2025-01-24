@@ -25,39 +25,38 @@ rename MyApp from dropdown!
  */
 
 class DuckDuckGoChat {
-  // still needed?
-  static const Map<String, String> headersBase = {
-    'User-Agent': 'Foo',
-    'Accept': 'text/event-stream',
-    'Accept-Language': 'en-GB,en;q=0.5',
-    'Accept-Encoding': 'gzip, deflate, br, zstd',
-    'Referer': 'https://duckduckgo.com/',
-    'Content-Type': 'application/json',
-    'Origin': 'https://duckduckgo.com',
-    'Connection': 'keep-alive',
-    'Cookie': 'dcm=5',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-origin',
-    'TE': 'trailers',
-  };
-
   // Constructor
   DuckDuckGoChat() {
     //_fetchApiToken(); // Fetch the API token when the instance is created
   }
 
   // should do post if needed... currently this is always the first request
-  Future<http.Response> _makeGetRequest(Uri url, Map<String, String> headers) async {
+  Future<http.Response> _sendPostRequest(String url_str, String body) async {
+    Uri url = Uri.parse(url_str);
+    final headers = {
+      'Content-Type': 'application/json',
+    };
+
     try
     {
-      return await http.get(url, headers: headers);
+      print("sending post request...");
+      final startTime = DateTime.now();
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: body,
+      );
+      final endTime = DateTime.now();
+      print("got response!");
+      final duration = endTime.difference(startTime);
+      print("Request took ${duration.inMilliseconds}ms");
+      return response;
     }
     on SocketException catch (e)
     {
       if (e.osError?.errorCode == 7)
         {
-          throw "Got an error. Are you connected to the internet?";
+          throw "Are you connected to the internet?";
         }
       else
         {
@@ -69,34 +68,20 @@ class DuckDuckGoChat {
 
   Future<String> callModel(String message, bool detailedResponse) async {
     // Send the message to the specified model
-    String url_str;
+    String url;
 
     if (detailedResponse) {
-      url_str = ('https://avia2292.pythonanywhere.com/get-detailed-response');
+      url = 'https://avia2292.pythonanywhere.com/get-detailed-response';
     } else {
-      url_str = ('https://avia2292.pythonanywhere.com/get-response');
+      url = 'https://avia2292.pythonanywhere.com/get-response';
     }
-    Uri url = Uri.parse(url_str);
-    final headers = {
-      'Content-Type': 'application/json',
-    };
-    message = message.replaceAll('"', '').replaceAll("'", "");
+    message = message.replaceAll('"', '').replaceAll("'", ""); // important to not break things on server, temporary solution
     final body = '{"term": "$message"}';
-    print("sending post...");
-    final startTime = DateTime.now();
-    //final client = http.Client();
-    final response = await http.post(
-      url,
-      headers: headers,
-      body: body,
-    );
-    final endTime = DateTime.now();
-    print("got response!");
-    final duration = endTime.difference(startTime);
-    print("Request took ${duration.inMilliseconds}ms");
-    print(response.body);
-    print(headers);
-    print(body);
+
+    final response = await _sendPostRequest(url, body);
+    //print(response.body);
+    //print(headers);
+    //print(body);
     if (response.statusCode == 200) {
       print('Request successful!');
       return jsonDecode(response.body)["message"];

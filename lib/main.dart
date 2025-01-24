@@ -111,7 +111,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       return null;
     });
 
-    // this generates error for the service, but nothing too bad AFAIK
     _checkPermissions();
 
     // Add observer for app lifecycle changes
@@ -156,6 +155,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       });
     } on PlatformException catch (e) {
       print("Failed to get permissions: '${e.message}'.");
+    } on MissingPluginException catch (e) {
+      print("Got: ${e.message}, probably running service and not main activity");
     }
   }
 
