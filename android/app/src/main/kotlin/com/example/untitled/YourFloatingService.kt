@@ -21,7 +21,7 @@ class YourFloatingService : Service() {
     private var floatingView: View? = null
     private var backgroundView: View? = null
     private lateinit var windowManager: WindowManager
-    private var flutterEngine: FlutterEngine? = null
+    //private var flutterEngine: FlutterEngine? = null
     private val LOADING_EMOJI = "\uD83E\uDD14";
     private val FAIL_EMOJI = "\uD83E\uDEE0";
     private val SUCCESS_EMOJI = "\uD83E\uDDD0";
@@ -36,6 +36,22 @@ class YourFloatingService : Service() {
             }
             // Initialize plugins if needed
             //flutterEngine?.plugins?.add(MethodChannelPlugin())
+        }
+    }
+
+    companion object {
+        // Create a static Flutter engine that persists across service calls
+        private var flutterEngine: FlutterEngine? = null
+    }
+
+    private fun ensureFlutterEngine() {
+        if (flutterEngine == null) {
+            Log.d("YourFloatingService", "Creating persistent Flutter engine")
+            flutterEngine = FlutterEngine(this).apply {
+                dartExecutor.executeDartEntrypoint(
+                    DartExecutor.DartEntrypoint.createDefault()
+                )
+            }
         }
     }
 
@@ -66,8 +82,7 @@ class YourFloatingService : Service() {
     private fun callDartMethod(message: String) {
         Log.d("YourFloatingService", "Attempting to call Dart method with message: $message")
 
-        initializeFlutterEngine()
-
+        ensureFlutterEngine()
         flutterEngine?.let { engine ->
             val methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.example.untitled/floating")
             methodChannel.invokeMethod("handleMessage", message, object : MethodChannel.Result {
@@ -141,8 +156,8 @@ class YourFloatingService : Service() {
 
     private fun cleanupFlutterEngine() {
         Log.d("YourFloatingService", "Cleaning up Flutter engine")
-        flutterEngine?.destroy()
-        flutterEngine = null
+        //flutterEngine?.destroy()
+        //flutterEngine = null
     }
 
     private fun createFloatingView(text: String) {

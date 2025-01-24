@@ -62,7 +62,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   int _counter = 0;
   String _response = '';
   final TextEditingController _controller = TextEditingController();
-  DuckDuckGoChat chat = DuckDuckGoChat(model: DuckDuckGoModel.gpt4oMini);
+  DuckDuckGoChat chat = DuckDuckGoChat();
   static const platform = MethodChannel('com.example.untitled/floating');
   bool _hasOverlayPermission = false;
   bool _hasBatteryOptimization = false;
@@ -239,7 +239,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     //print("api token:" + _apiToken!);
     if (_controller.text.isNotEmpty) {
       String message = _controller.text;
-      String response = "Feature removed for now"; //await chat.callModel(message);
+
+      String response = await chat.callModel(message, false); //"Feature removed for now"; //await chat.callModel(message);
       _controller.clear(); // Clear the input field after sending
       _update_response(response);
       return response;
