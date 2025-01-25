@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
-import 'ddg_request.dart';
+import 'ai_client.dart';
 import 'dart:io';
 
 void main() {
