@@ -62,7 +62,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   int _counter = 0;
   String _response = '';
   final TextEditingController _controller = TextEditingController();
-  DuckDuckGoChat chat = DuckDuckGoChat();
+  AIClient client = AIClient();
   static const platform = MethodChannel('com.example.untitled/floating');
   bool _hasOverlayPermission = false;
   bool _hasBatteryOptimization = false;
@@ -241,7 +241,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     if (_controller.text.isNotEmpty) {
       String message = _controller.text;
 
-      String response = await chat.callModel(message, false); //"Feature removed for now"; //await chat.callModel(message);
+      String response = await client.callModel(message, false); //"Feature removed for now"; //await chat.callModel(message);
       _controller.clear(); // Clear the input field after sending
       _update_response(response);
       return response;
@@ -341,7 +341,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   Future<String?> _sendMessageFromPlatform(String message, bool detailedResponse) async {
     print("I WAS CALLED!");
-    String response = await chat.callModel(message, detailedResponse);
+    String response = await client.callModel(message, detailedResponse);
     _update_response(response);
     print(response + "is my response");
     return response; // Return response to the platform

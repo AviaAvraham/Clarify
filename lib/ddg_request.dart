@@ -3,16 +3,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
-// Enum for available models
-enum DuckDuckGoModel {
-  claude3Haiku('claude-3-haiku-20240307'),
-  metaLlama('meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo'),
-  mistralai('mistralai/Mixtral-8x7B-Instruct-v0.1'),
-  gpt4oMini('gpt-4o-mini');
-
-  final String value;
-  const DuckDuckGoModel(this.value);
-}
 /*
 TODO:
 enhance main screen look (?) - add note to enable the settings
@@ -24,9 +14,9 @@ open a git for backend?
 rename MyApp from dropdown!
  */
 
-class DuckDuckGoChat {
+class AIClient {
   // Constructor
-  DuckDuckGoChat() {
+  AIClient() {
     //_fetchApiToken(); // Fetch the API token when the instance is created
   }
 
