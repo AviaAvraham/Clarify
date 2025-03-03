@@ -3,6 +3,7 @@ package com.example.untitled
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -13,7 +14,6 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.embedding.engine.dart.DartExecutor
-import android.util.Log
 
 
 class YourFloatingService : Service() {
@@ -25,19 +25,6 @@ class YourFloatingService : Service() {
     private val LOADING_EMOJI = "\uD83E\uDD14";
     private val FAIL_EMOJI = "\uD83E\uDEE0";
     private val SUCCESS_EMOJI = "\uD83E\uDDD0";
-
-    private fun initializeFlutterEngine() {
-        if (flutterEngine == null) {
-            Log.d("YourFloatingService", "Creating new Flutter engine")
-            flutterEngine = FlutterEngine(this).apply {
-                dartExecutor.executeDartEntrypoint(
-                    DartExecutor.DartEntrypoint.createDefault()
-                )
-            }
-            // Initialize plugins if needed
-            //flutterEngine?.plugins?.add(MethodChannelPlugin())
-        }
-    }
 
     companion object {
         // Create a static Flutter engine that persists across service calls
@@ -61,20 +48,30 @@ class YourFloatingService : Service() {
         if (floatingView != null) {
             Log.d("YourFloatingService", "Floating view already exists, updating content.")
             callDartMethod(text) // Ensure this line executes
-            return START_NOT_STICKY
+            return START_STICKY
         }
 
         Log.d("YourFloatingService", "Creating floating view with text: $text")
         createFloatingView(text)
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
-    private fun updateStatusEmoji(emoji: String) {
+    private fun updateFloatingView(message: String, emoji: String) {
         val statusView = floatingView?.findViewById<TextView>(R.id.floating_status)
         if (statusView != null) {
             statusView.text = emoji
         } else {
             Log.e("YourFloatingService", "Status TextView is null. Skipping emoji update.")
+        }
+
+        if (message != "")
+        {
+            val responseView = floatingView?.findViewById<TextView>(R.id.floating_text)
+            if (responseView != null) {
+                responseView.text = message
+            } else {
+                Log.e("YourFloatingService", "Response TextView is null. Skipping text update.")
+            }
         }
     }
 
@@ -87,30 +84,19 @@ class YourFloatingService : Service() {
             val methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.example.untitled/floating")
             methodChannel.invokeMethod("handleMessage", message, object : MethodChannel.Result {
                 override fun success(result: Any?) {
-                    val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-                    val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
                     Log.d("YourFloatingService", "Dart method succeeded with result: $result")
+                    updateFloatingView(result.toString(), SUCCESS_EMOJI)
 
-                    textView.text = result as String
-                    updateStatusEmoji(SUCCESS_EMOJI)
+                    val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
                     moreButton.visibility = View.VISIBLE
-
-                    // Clean up engine after success
-                    cleanupFlutterEngine()
                 }
                 override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
                     Log.d("YourFloatingService", "Dart method error: $errorCode - $errorMessage")
-                    val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-                    textView.text = "Got an error:\n$errorMessage"
-                    updateStatusEmoji(FAIL_EMOJI)
-                    cleanupFlutterEngine()
+                    updateFloatingView("Got an error:\n$errorMessage", FAIL_EMOJI)
                 }
                 override fun notImplemented() {
                     Log.d("YourFloatingService", "Dart method not implemented")
-                    val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-                    textView.text = "Method not implemented"
-                    updateStatusEmoji(FAIL_EMOJI)
-                    cleanupFlutterEngine()
+                    updateFloatingView("Method not implemented", FAIL_EMOJI)
                 }
             })
         }
@@ -122,42 +108,27 @@ class YourFloatingService : Service() {
         // Hide the More button when clicked
         val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
         moreButton.visibility = View.GONE
-        updateStatusEmoji(LOADING_EMOJI)
+        updateFloatingView("", LOADING_EMOJI)
 
-        initializeFlutterEngine()
+        ensureFlutterEngine()
 
         flutterEngine?.let { engine ->
             val methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.example.untitled/floating")
             methodChannel.invokeMethod("handleMoreDetails", message, object : MethodChannel.Result {
                 override fun success(result: Any?) {
-                    val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
                     Log.d("YourFloatingService", "Dart method for more details succeeded with result: $result")
-                    textView.text = result as String
-                    updateStatusEmoji(SUCCESS_EMOJI)
-                    cleanupFlutterEngine()
+                    updateFloatingView(result.toString(), SUCCESS_EMOJI)
                 }
                 override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
                     Log.d("YourFloatingService", "Dart method for more details error: $errorCode - $errorMessage")
-                    val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-                    textView.text = "Got an error:\n$errorMessage"
-                    updateStatusEmoji(FAIL_EMOJI)
-                    cleanupFlutterEngine()
+                    updateFloatingView("Got an error:\n$errorMessage", FAIL_EMOJI)
                 }
                 override fun notImplemented() {
                     Log.d("YourFloatingService", "Dart method for more details not implemented")
-                    val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-                    textView.text = "More details method not implemented"
-                    updateStatusEmoji(FAIL_EMOJI)
-                    cleanupFlutterEngine()
+                    updateFloatingView("Method not implemented", FAIL_EMOJI)
                 }
             })
         }
-    }
-
-    private fun cleanupFlutterEngine() {
-        Log.d("YourFloatingService", "Cleaning up Flutter engine")
-        //flutterEngine?.destroy()
-        //flutterEngine = null
     }
 
     private fun createFloatingView(text: String) {
@@ -203,7 +174,7 @@ class YourFloatingService : Service() {
             callDartMethodForMore(text)
         }
 
-        updateStatusEmoji(LOADING_EMOJI)
+        updateFloatingView("", LOADING_EMOJI)
 
         // Configure layout params for the floating view
         val layoutParams = WindowManager.LayoutParams(
