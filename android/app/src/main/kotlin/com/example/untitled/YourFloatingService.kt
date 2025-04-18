@@ -47,7 +47,7 @@ class YourFloatingService : Service() {
 
         if (floatingView != null) {
             Log.d("YourFloatingService", "Floating view already exists, updating content.")
-            callDartMethod(text) // Ensure this line executes
+            callDartMethodForMessage(text) // Ensure this line executes
             return START_STICKY
         }
 
@@ -75,66 +75,51 @@ class YourFloatingService : Service() {
         }
     }
 
+    private fun callDartMethod(methodName: String, message: String, showMoreButton : Boolean = false)
+    {
+        Log.d("YourFloatingService", "Attempting to call Dart method '$methodName' with message: $message")
 
-    private fun callDartMethod(message: String) {
-        Log.d("YourFloatingService", "Attempting to call Dart method with message: $message")
-
-        ensureFlutterEngine()
-        flutterEngine?.let { engine ->
-            val methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.example.untitled/floating")
-            methodChannel.invokeMethod("handleMessage", message, object : MethodChannel.Result {
-                override fun success(result: Any?) {
-                    Log.d("YourFloatingService", "Dart method succeeded with result: $result")
-                    updateFloatingView(result.toString(), SUCCESS_EMOJI)
-
-                    val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
-                    moreButton.visibility = View.VISIBLE
-                }
-                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-                    Log.d("YourFloatingService", "Dart method error: $errorCode - $errorMessage")
-                    updateFloatingView("Got an error:\n$errorMessage", FAIL_EMOJI)
-                }
-                override fun notImplemented() {
-                    Log.d("YourFloatingService", "Dart method not implemented")
-                    updateFloatingView("Method not implemented", FAIL_EMOJI)
-                }
-            })
-        }
-    }
-
-    private fun callDartMethodForMore(message: String) {
-        Log.d("YourFloatingService", "Attempting to call Dart method for more details: $message")
-
-        // Hide the More button when clicked
+        // Hide the 'more' button - only noticeable when we click it
         val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
         moreButton.visibility = View.GONE
         updateFloatingView("", LOADING_EMOJI)
 
-        ensureFlutterEngine()
-
         flutterEngine?.let { engine ->
             val methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.example.untitled/floating")
-            methodChannel.invokeMethod("handleMoreDetails", message, object : MethodChannel.Result {
+            methodChannel.invokeMethod(methodName, message, object : MethodChannel.Result {
                 override fun success(result: Any?) {
-                    Log.d("YourFloatingService", "Dart method for more details succeeded with result: $result")
+                    Log.d("YourFloatingService", "Dart method '$methodName' succeeded with result: $result")
                     updateFloatingView(result.toString(), SUCCESS_EMOJI)
+
+                    if (showMoreButton)
+                    {
+                        val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
+                        moreButton.visibility = View.VISIBLE
+                    }
                 }
                 override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-                    Log.d("YourFloatingService", "Dart method for more details error: $errorCode - $errorMessage")
+                    Log.d("YourFloatingService", "Dart method '$methodName' error: $errorCode - $errorMessage")
                     updateFloatingView("Got an error:\n$errorMessage", FAIL_EMOJI)
                 }
                 override fun notImplemented() {
-                    Log.d("YourFloatingService", "Dart method for more details not implemented")
+                    Log.d("YourFloatingService", "Dart method '$methodName' not implemented")
                     updateFloatingView("Method not implemented", FAIL_EMOJI)
                 }
             })
         }
     }
 
+    private fun callDartMethodForMessage(message: String) {
+        callDartMethod("handleMessage", message, showMoreButton = true)
+    }
+
+    private fun callDartMethodForMore(message: String) {
+        callDartMethod("handleMoreDetails",message)
+    }
+
     private fun createFloatingView(text: String) {
 
-        callDartMethod(text) // Ensure this line executes
-        Log.d("YourFloatingService", "dart method called")
+        ensureFlutterEngine()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         // Add a background view to detect outside clicks
@@ -174,8 +159,6 @@ class YourFloatingService : Service() {
             callDartMethodForMore(text)
         }
 
-        updateFloatingView("", LOADING_EMOJI)
-
         // Configure layout params for the floating view
         val layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -191,6 +174,8 @@ class YourFloatingService : Service() {
 
         // Add the floating view to the window
         windowManager.addView(floatingView, layoutParams)
+        callDartMethodForMessage(text) // Ensure this line executes
+        Log.d("YourFloatingService", "dart method called")
     }
 
     override fun onDestroy() {

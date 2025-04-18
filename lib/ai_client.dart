@@ -65,9 +65,9 @@ class AIClient {
     } else {
       url = 'https://avia2292.pythonanywhere.com/get-response';
     }
-    message = message.replaceAll('"', '').replaceAll("'", ""); // important to not break things on server, temporary solution
+    message = message.replaceAll('"', '').replaceAll("'", "").replaceAll("\n", " ").replaceAll("\\n", " "); // important to not break things on server, temporary solution
     final body = '{"term": "$message"}';
-
+    // print(body);
     final response = await _sendPostRequest(url, body);
     //print(response.body);
     //print(headers);

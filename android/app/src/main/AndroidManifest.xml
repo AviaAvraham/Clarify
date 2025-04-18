@@ -34,15 +34,29 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!--- AFAIK the android:icons do nothing, but just in case they do.. -->
         <activity android:name=".ProcessTextActivity"
-            android:label="MyApp"
+            android:label="Clarify"
+            android:icon="@mipmap/ic_launcher"
             android:exported="true">
+
+            <!-- Show up in context menu for read only stuff -->
             <intent-filter>
                 <action android:name="android.intent.action.PROCESS_TEXT" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+
+            <!-- Show up in context menu for input stuff -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
             <meta-data android:name="android.intent.extra.PROCESS_TEXT_READONLY" android:value="false" />
+            <meta-data android:name="android.app.icon" android:resource="@mipmap/ic_launcher" />
+            <meta-data android:name="android.app.shortcutIcon" android:resource="@mipmap/ic_launcher" />
         </activity>
 
         <!-- Don't delete the meta-data below.
