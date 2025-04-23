@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Clarify',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Clarify Home Page'),
     );
   }
 }
@@ -63,7 +63,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   String _response = '';
   final TextEditingController _controller = TextEditingController();
   AIClient client = AIClient();
-  static const platform = MethodChannel('com.example.untitled/floating');
+  static const platform = MethodChannel('com.clarify.app/floating');
   bool _hasOverlayPermission = false;
   bool _hasBatteryOptimization = false;
 
@@ -224,11 +224,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             _hasOverlayPermission,
             _requestOverlayPermission,
           ),
-          _buildPermissionButtonAndroid(
-            'Disable Battery Optimization',
-            _hasBatteryOptimization,
-            _requestBatteryOptimization,
-          ),
+          // _buildPermissionButtonAndroid(
+          //   'Disable Battery Optimization',
+          //   _hasBatteryOptimization,
+          //   _requestBatteryOptimization,
+          // ),
         ],
       ),
     );

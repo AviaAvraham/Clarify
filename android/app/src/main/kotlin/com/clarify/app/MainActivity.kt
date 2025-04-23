@@ -1,4 +1,4 @@
-package com.example.untitled // Ensure this matches your app's package name
+package com.clarify.app // Ensure this matches your app's package name
 
 import android.content.Intent
 import android.os.Bundle
@@ -13,7 +13,7 @@ import android.net.Uri
 
 class MainActivity: FlutterActivity() {
     // Define the channel name
-    private val CHANNEL = "com.example.untitled/floating" // Use your actual package name
+    private val CHANNEL = "com.clarify.app/floating" // Use your actual package name
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

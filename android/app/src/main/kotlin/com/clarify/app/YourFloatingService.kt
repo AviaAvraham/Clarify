@@ -1,4 +1,4 @@
-package com.example.untitled
+package com.clarify.app
 
 import android.app.Service
 import android.content.Intent
@@ -11,7 +11,6 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.embedding.engine.dart.DartExecutor
 
@@ -85,7 +84,7 @@ class YourFloatingService : Service() {
         updateFloatingView("", LOADING_EMOJI)
 
         flutterEngine?.let { engine ->
-            val methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.example.untitled/floating")
+            val methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.clarify.app/floating")
             methodChannel.invokeMethod(methodName, message, object : MethodChannel.Result {
                 override fun success(result: Any?) {
                     Log.d("YourFloatingService", "Dart method '$methodName' succeeded with result: $result")

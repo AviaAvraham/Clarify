@@ -1,4 +1,4 @@
-package com.example.untitled
+package com.clarify.app
 
 import android.app.Activity
 import android.content.Intent
