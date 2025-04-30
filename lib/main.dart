@@ -32,10 +32,10 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Clarify Home Page'),
+      home: const MyHomePage(title: 'Clarify'),
     );
   }
 }
@@ -214,6 +214,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     if (defaultTargetPlatform != TargetPlatform.android) {
       return Container();
     }
+    if (_hasOverlayPermission)
+      {
+        return Container();
+      }
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -236,107 +240,207 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
 
   Future<String?> _sendMessage() async {
-    print("HELLOOOOOO");
-    //print("api token:" + _apiToken!);
+    String response;
     if (_controller.text.isNotEmpty) {
       String message = _controller.text;
 
-      String response = await client.callModel(message, false); //"Feature removed for now"; //await chat.callModel(message);
-      _controller.clear(); // Clear the input field after sending
-      _update_response(response);
-      return response;
+      response = await client.callModel(message, false);
+      //_controller.clear(); // Clear the input field after sending
     }
-    return "";
+    else
+      {
+        response = "";
+      }
+
+    _update_response(response);
+    return response;
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: SingleChildScrollView(
-        child: Center(
-          // Center is a layout widget. It takes a single child and positions it
-          // in the middle of the parent.
-          child: Column(
-            // Column is also a layout widget. It takes a list of children and
-            // arranges them vertically. By default, it sizes itself to fit its
-            // children horizontally, and tries to be as tall as its parent.
-            //
-            // Column has various properties to control how it sizes itself and
-            // how it positions its children. Here we use mainAxisAlignment to
-            // center the children vertically; the main axis here is the vertical
-            // axis because Columns are vertical (the cross axis would be
-            // horizontal).
-            //
-            // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-            // action in the IDE, or press "p" in the console), to see the
-            // wireframe for each widget.
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const Text(
-                'Chat with LLaMA:',
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: TextField(
-                  controller: _controller,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Type your message',
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _sendMessage,
-                child: const Text('Send'),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Response:',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  _response,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-              buildPermissionsButton(),
-            ],
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        elevation: 0, // Flat design
+        centerTitle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
+        title: Text(
+          widget.title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+            color: Colors.white,
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _startFloatingService,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
-      // This trailing comma makes auto-formatting nicer for build methods.
-    );
-  }
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const SizedBox(height: 16),
+                // Input section with subtle gradient background
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                        Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "What term would you like to clarify?",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Card(
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: TextField(
+                            controller: _controller,
+                            maxLines: 3,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.white,
+                              // hintText: 'Type in a term to clarify',
+                              hintStyle: TextStyle(color: Colors.grey[400]),
+                              contentPadding: const EdgeInsets.all(16),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _sendMessage,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Send',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-  Future<void> _startFloatingService() async {
-    try {
-      await platform.invokeMethod('startFloatingService');
-      print("Floating service started successfully.");
-    } on PlatformException catch (e) {
-      print("Error starting service: ${e.message}");
-    }
+                const SizedBox(height: 24),
+
+                // Response section
+                if (_response.isNotEmpty)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(24),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.lightbulb_outline,
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Response',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).colorScheme.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Text(
+                            _response,
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              height: 1.5,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                const SizedBox(height: 24),
+
+                // Permissions button with subtle styling
+                Container(
+                  child: buildPermissionsButton(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<String?> _sendMessageFromPlatform(String message, bool detailedResponse) async {
