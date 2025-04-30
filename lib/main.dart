@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'ai_client.dart';
 import 'dart:io';
+// import 'settings_page.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(const MyApp());
@@ -115,6 +117,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
     // Add observer for app lifecycle changes
     WidgetsBinding.instance.addObserver(this);
+
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        // optionally choose light/dark icons to contrast your bar:
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
   }
 
   @override
@@ -215,9 +225,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       return Container();
     }
     if (_hasOverlayPermission)
-      {
-        return Container();
-      }
+    {
+      return Container();
+    }
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -240,6 +250,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
 
   Future<String?> _sendMessage() async {
+    FocusScope.of(context).unfocus();
     String response;
     if (_controller.text.isNotEmpty) {
       String message = _controller.text;
@@ -251,177 +262,174 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       {
         response = "";
       }
-
+      response = response.trim();
     _update_response(response);
     return response;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        elevation: 0, // Flat design
-        centerTitle: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(20),
-          ),
-        ),
-        title: Text(
-          widget.title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                const SizedBox(height: 16),
-                // Input section with subtle gradient background
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Theme.of(context).colorScheme.primary.withOpacity(0.05),
-                        Theme.of(context).colorScheme.secondary.withOpacity(0.05),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "What term would you like to clarify?",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Card(
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                            width: 1.0,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                          child: TextField(
-                            controller: _controller,
-                            maxLines: 3,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.white,
-                              // hintText: 'Type in a term to clarify',
-                              hintStyle: TextStyle(color: Colors.grey[400]),
-                              contentPadding: const EdgeInsets.all(16),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _sendMessage,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Send',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    return GestureDetector(
+      // Close keyboard when tapping outside textbox
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: Colors.grey[100],
+        extendBodyBehindAppBar: true,
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(statusBarHeight + 60.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(24),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  offset: const Offset(0, 2),
+                  blurRadius: 6,
                 ),
+              ],
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0), // some horizontal padding
+                child: Row(
+                  children: [
+                    // Left: Your App Icon
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12.0),
+                      child: Image.asset(
+                        'Icon144.png', // or use Icon(Icons.your_icon)
+                        width: 32,
+                        height: 32,
+                      ),
+                    ),
 
-                const SizedBox(height: 24),
+                    // Middle: Title expands to fill available space
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
 
-                // Response section
-                if (_response.isNotEmpty)
+                    // Right: Settings cog
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.settings),
+                        color: Colors.white,
+                        onPressed: () {
+                          // Navigator.push(
+                          //   context,
+                          //   MaterialPageRoute(builder: (_) => const SettingsPage()),
+                          // );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const SizedBox(height: 16),
+                  // Input section with subtle gradient background
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                          Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(24),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.lightbulb_outline,
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Response',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(context).colorScheme.secondary,
-                                ),
-                              ),
-                            ],
+                        Text(
+                          "What term would you like to clarify?",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Text(
-                            _response,
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              height: 1.5,
-                              letterSpacing: 0.3,
+                        const SizedBox(height: 12),
+                        Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: TextField(
+                              controller: _controller,
+                              maxLines: 2, // Reduced from 3 to 2 to make it less high
+                              // Prevent multiline/enter key behavior
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _sendMessage(),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.white,
+                                hintText: 'Type here...',
+                                hintStyle: TextStyle(color: Colors.grey[400]),
+                                contentPadding: const EdgeInsets.all(16),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _sendMessage,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Send',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
                         ),
@@ -429,19 +437,105 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                     ),
                   ),
 
-                const SizedBox(height: 24),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300), // Smooth transition
+                    child: _response.isEmpty
+                        ? const SizedBox(height: 24) // Minimal space when no response
+                        : Padding(
+                      padding: const EdgeInsets.only(top: 24),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(24),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  // "Lit" lightbulb with color and gradient effect
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: ShaderMask(
+                                      shaderCallback: (Rect bounds) {
+                                        return LinearGradient(
+                                          colors: [
+                                            Colors.amber[300]!,
+                                            Colors.amber[600]!,
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ).createShader(bounds);
+                                      },
+                                      child: const Icon(
+                                        Icons.lightbulb,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Response',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).colorScheme.secondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: SelectableText(  // Make text selectable
+                                _response,
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  height: 1.5,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
 
-                // Permissions button with subtle styling
-                Container(
-                  child: buildPermissionsButton(),
-                ),
-              ],
+                  const SizedBox(height: 24),
+
+                  // Permissions button with subtle styling
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: buildPermissionsButton(),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
 
   Future<String?> _sendMessageFromPlatform(String message, bool detailedResponse) async {
     print("I WAS CALLED!");
