@@ -11,6 +11,7 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.embedding.engine.dart.DartExecutor
 
@@ -20,25 +21,23 @@ class YourFloatingService : Service() {
     private var floatingView: View? = null
     private var backgroundView: View? = null
     private lateinit var windowManager: WindowManager
-    //private var flutterEngine: FlutterEngine? = null
     private val LOADING_EMOJI = "\uD83E\uDD14";
     private val FAIL_EMOJI = "\uD83E\uDEE0";
     private val SUCCESS_EMOJI = "\uD83E\uDDD0";
 
-    companion object {
-        // Create a static Flutter engine that persists across service calls
-        private var flutterEngine: FlutterEngine? = null
-    }
+    private lateinit var flutterEngine: FlutterEngine
 
-    private fun ensureFlutterEngine() {
-        if (flutterEngine == null) {
-            Log.d("YourFloatingService", "Creating persistent Flutter engine")
-            flutterEngine = FlutterEngine(this).apply {
+    override fun onCreate() {
+        super.onCreate()
+
+        flutterEngine = FlutterEngineCache.getInstance().get("bg_engine_id")
+            ?: FlutterEngine(this).apply {
                 dartExecutor.executeDartEntrypoint(
                     DartExecutor.DartEntrypoint.createDefault()
                 )
+            }.also {
+                FlutterEngineCache.getInstance().put("bg_engine_id", it)
             }
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -76,6 +75,8 @@ class YourFloatingService : Service() {
 
     private fun callDartMethod(methodName: String, message: String, showMoreButton : Boolean = false)
     {
+        // time measurement
+        val startTime = System.currentTimeMillis()
         Log.d("YourFloatingService", "Attempting to call Dart method '$methodName' with message: $message")
 
         // Hide the 'more' button - only noticeable when we click it
@@ -88,13 +89,16 @@ class YourFloatingService : Service() {
             methodChannel.invokeMethod(methodName, message, object : MethodChannel.Result {
                 override fun success(result: Any?) {
                     Log.d("YourFloatingService", "Dart method '$methodName' succeeded with result: $result")
-                    updateFloatingView(result.toString(), SUCCESS_EMOJI)
+                    val endTime = System.currentTimeMillis()
+                    val elapsedTime = endTime - startTime
+                    updateFloatingView(result.toString() /* + "(in " + elapsedTime + "ms)"*/, SUCCESS_EMOJI)
 
                     if (showMoreButton)
                     {
                         val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
                         moreButton.visibility = View.VISIBLE
                     }
+                    Log.d("YourFloatingService", "Dart method '$methodName' execution time: $elapsedTime ms")
                 }
                 override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
                     Log.d("YourFloatingService", "Dart method '$methodName' error: $errorCode - $errorMessage")
@@ -118,7 +122,6 @@ class YourFloatingService : Service() {
 
     private fun createFloatingView(text: String) {
 
-        ensureFlutterEngine()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         // Add a background view to detect outside clicks

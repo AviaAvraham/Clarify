@@ -7,12 +7,17 @@ import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
+import io.flutter.embedding.engine.dart.DartExecutor
+
 class ProcessTextActivity : Activity() {
 
     private val REQUEST_OVERLAY_PERMISSION = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        preWarmBackgroundEngine()
         Log.d("ProcessTextActivity", "Something happened")
 
         val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT) ?: ""
@@ -48,5 +53,19 @@ class ProcessTextActivity : Activity() {
         val serviceIntent = Intent(this, YourFloatingService::class.java)
         serviceIntent.putExtra("extra_text", text)
         startService(serviceIntent)
+    }
+
+
+    private fun preWarmBackgroundEngine() {
+      val cache = FlutterEngineCache.getInstance()
+      if (cache.get("bg_engine_id") == null) {
+        val bgEngine = FlutterEngine(this).apply {
+          dartExecutor.executeDartEntrypoint(
+            DartExecutor.DartEntrypoint.createDefault()
+          )
+        }
+        cache.put("bg_engine_id", bgEngine)
+        Log.d("ProcessTextActivity", "Pre-warmed bg_engine_id")
+      }
     }
 }

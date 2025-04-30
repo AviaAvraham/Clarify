@@ -10,6 +10,8 @@ import io.flutter.embedding.engine.FlutterEngineCache
 import android.provider.Settings
 import android.os.PowerManager
 import android.net.Uri
+import io.flutter.embedding.engine.dart.DartExecutor
+import io.flutter.embedding.engine.dart.DartExecutor.DartEntrypoint
 
 class MainActivity: FlutterActivity() {
     // Define the channel name
@@ -66,5 +68,15 @@ class MainActivity: FlutterActivity() {
 
         // Cache the engine for reuse in your service
         FlutterEngineCache.getInstance().put("flutter_engine_id", flutterEngine)
+
+        // Create and cache a second, headless engine for YourFloatingService:
+        val bgEngine = FlutterEngine(this).apply {
+              // Start the Dart entrypoint immediately
+           dartExecutor.executeDartEntrypoint(
+                 DartExecutor.DartEntrypoint.createDefault()
+                )
+            }
+        FlutterEngineCache.getInstance()
+          .put("bg_engine_id", bgEngine)
     }
 }
