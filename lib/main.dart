@@ -90,22 +90,23 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
 
-    // Set up method call handler
-    platform.setMethodCallHandler((call) async {
-      if (call.method == "handleMessage") {
-        print("handleMessage received: ${call.arguments}");
-        String message = call.arguments;
-        var detailedResponse = false;
-        return await _sendMessageFromPlatform(message, detailedResponse);
-      } else if (call.method == "handleMoreDetails") {
-        print("handleMoreDetails received: ${call.arguments}");
-        String message = call.arguments;
-        var detailedResponse = true;
-        return await _sendMessageFromPlatform(message, detailedResponse);
-      }
-      print("Unhandled method: ${call.method}");
-      return null;
-    });
+    // Commented out in case needed in future use
+    // // Set up method call handler
+    // platform.setMethodCallHandler((call) async {
+    //   if (call.method == "handleMessage") {
+    //     print("handleMessage received: ${call.arguments}");
+    //     String message = call.arguments;
+    //     var detailedResponse = false;
+    //     return await _sendMessageFromPlatform(message, detailedResponse);
+    //   } else if (call.method == "handleMoreDetails") {
+    //     print("handleMoreDetails received: ${call.arguments}");
+    //     String message = call.arguments;
+    //     var detailedResponse = true;
+    //     return await _sendMessageFromPlatform(message, detailedResponse);
+    //   }
+    //   print("Unhandled method: ${call.method}");
+    //   return null;
+    // });
 
     _checkPermissions();
 
@@ -531,11 +532,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
 
-  Future<String?> _sendMessageFromPlatform(String message, bool detailedResponse) async {
-    print("I WAS CALLED!");
-    String response = await client.callModel(message, detailedResponse);
-    _update_response(response);
-    print(response + "is my response");
-    return response; // Return response to the platform
-  }
+  // Future<String?> _sendMessageFromPlatform(String message, bool detailedResponse) async {
+  //   print("I WAS CALLED!");
+  //   String response = await client.callModel(message, detailedResponse);
+  //   _update_response(response);
+  //   print(response + "is my response");
+  //   return response; // Return response to the platform
+  // }
 }

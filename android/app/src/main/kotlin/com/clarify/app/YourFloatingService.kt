@@ -14,10 +14,12 @@ import android.widget.ImageButton
 import android.os.Handler
 import android.os.Looper
 import android.graphics.Color
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.engine.FlutterEngineCache
-import io.flutter.plugin.common.MethodChannel
-import io.flutter.embedding.engine.dart.DartExecutor
+import com.clarify.app.AIClient
+import android.app.Activity
+import android.os.Bundle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 
 class YourFloatingService : Service() {
@@ -28,22 +30,7 @@ class YourFloatingService : Service() {
     private val LOADING_EMOJI = "\uD83E\uDD14";
     private val FAIL_EMOJI = "\uD83E\uDEE0";
     private val SUCCESS_EMOJI = "\uD83E\uDDD0";
-
-    companion object {
-        // Create a static Flutter engine that persists across service calls
-        private var flutterEngine: FlutterEngine? = null
-    }
-
-    private fun ensureFlutterEngine() {
-        if (flutterEngine == null) {
-            Log.d("YourFloatingService", "Creating persistent Flutter engine")
-            flutterEngine = FlutterEngine(this).apply {
-                dartExecutor.executeDartEntrypoint(
-                    DartExecutor.DartEntrypoint.createDefault()
-                )
-            }
-        }
-    }
+    private val aiClient = AIClient()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val text = intent?.getStringExtra("extra_text") ?: "No text"
@@ -78,11 +65,11 @@ class YourFloatingService : Service() {
         }
     }
 
-    private fun callDartMethod(methodName: String, message: String, showMoreButton : Boolean = false)
+    private fun callDartMethod(message: String, showMoreButton : Boolean = false)
     {
         // time measurement
-        val startTime = System.currentTimeMillis()
-        Log.d("YourFloatingService", "Attempting to call Dart method '$methodName' with message: $message")
+         val startTime = System.currentTimeMillis()
+        Log.d("YourFloatingService", "Attempting to call AI with message: $message")
 
         // Hide the 'more' button - only noticeable when we click it
         val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
@@ -100,73 +87,64 @@ class YourFloatingService : Service() {
         }
         updateFloatingView("", LOADING_EMOJI)
 
-        flutterEngine?.let { engine ->
-            val methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "com.clarify.app/floating")
-            methodChannel.invokeMethod(methodName, message, object : MethodChannel.Result {
-                override fun success(result: Any?) {
-                    Log.d("YourFloatingService", "Dart method '$methodName' succeeded with result: $result")
-                    val endTime = System.currentTimeMillis()
-                    val elapsedTime = endTime - startTime
-                    updateFloatingView(result.toString() /* + "(in " + elapsedTime + "ms)"*/, SUCCESS_EMOJI)
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                println("Calling AI model...")
+                // if showMoreButton is true we want a non-detailed response
+                // also, if the server fails, callModel will throw
+                val response = aiClient.callModel(message, !showMoreButton)
+                println("AI Response: $response")
 
-                    if (showMoreButton)
-                    {
-                        val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
-                        moreButton.visibility = View.VISIBLE
-                    }
-                    val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
-                    // Show the reload button after 5s delay, to avoid being rate limited
+                val endTime = System.currentTimeMillis()
+                val elapsedTime = endTime - startTime
+
+                updateFloatingView(response /* + "(in " + elapsedTime + "ms)"*/, SUCCESS_EMOJI)
+
+                if (showMoreButton)
+                {
+                    moreButton.visibility = View.VISIBLE
+                }
+                // Show the reload button after 5s delay, to avoid being rate limited
+                reloadButton.visibility = View.VISIBLE
+                reloadButton.animate().alpha(1f).setDuration(5000).withEndAction {
+                    reloadButton.animate()
+                        .scaleX(1.05f)
+                        .scaleY(1.05f)
+                        .setDuration(150)
+                        .withEndAction {
+                            reloadButton.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(150)
+                                .withEndAction {
+                                    reloadButton.isClickable = true
+                                }
+                                .start()
+                        }
+                        .start()
+                }.start()
+                Log.d("YourFloatingService", "AI call execution time: $elapsedTime ms")
+            } catch (e: Exception) {
+                val errorMessage = e.message ?: "Unknown error"
+                println("Error calling AI: $errorMessage")
+                updateFloatingView("Got an error:\n$errorMessage", FAIL_EMOJI)
+                Handler(Looper.getMainLooper()).postDelayed({
                     reloadButton.visibility = View.VISIBLE
-                    reloadButton.animate().alpha(1f).setDuration(5000).withEndAction {
-                        reloadButton.animate()
-                            .scaleX(1.05f)
-                            .scaleY(1.05f)
-                            .setDuration(150)
-                            .withEndAction {
-                                reloadButton.animate()
-                                    .scaleX(1f)
-                                    .scaleY(1f)
-                                    .setDuration(150)
-                                    .withEndAction {
-                                        reloadButton.isClickable = true
-                                    }
-                                    .start()
-                            }
-                            .start()
-                    }.start()
-                    Log.d("YourFloatingService", "Dart method '$methodName' execution time: $elapsedTime ms")
-                }
-                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-                    Log.d("YourFloatingService", "Dart method '$methodName' error: $errorCode - $errorMessage")
-                    updateFloatingView("Got an error:\n$errorMessage", FAIL_EMOJI)
-
-                    val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        reloadButton.visibility = View.VISIBLE
-                    }, 3000) // Hide the reload button after 3 seconds
-                }
-                override fun notImplemented() {
-                    Log.d("YourFloatingService", "Dart method '$methodName' not implemented")
-                    updateFloatingView("Unexpected error: Method not implemented $methodName", FAIL_EMOJI)
-
-                    val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
-                    reloadButton.visibility = View.VISIBLE
-                }
-            })
+                }, 3000) // Show the reload button after 3 seconds
+            }
         }
     }
 
     private fun callDartMethodForMessage(message: String) {
-        callDartMethod("handleMessage", message, showMoreButton = true)
+        callDartMethod(message, showMoreButton = true)
     }
 
     private fun callDartMethodForMore(message: String) {
-        callDartMethod("handleMoreDetails",message)
+        callDartMethod(message)
     }
 
     private fun createFloatingView(text: String) {
 
-        ensureFlutterEngine()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         // Add a background view to detect outside clicks
