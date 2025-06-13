@@ -1,75 +1,123 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/border_background"
-    android:padding="16dp">
+    android:background="@drawable/border_background">
 
-    <!-- App Icon -->
-    <ImageView
-        android:id="@+id/floating_app_icon"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+    <!-- Blue Ribbon behind top icons -->
+    <View
+        android:id="@+id/blue_ribbon"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
         android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:src="@mipmap/ic_launcher"
-        android:scaleType="centerCrop"
-        android:elevation="4dp"/>
-
-    <!-- Status Emoji -->
-    <TextView
-        android:id="@+id/floating_status"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_centerHorizontal="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginTop="8dp"
-        android:gravity="center"
-        android:text=""
-        android:textSize="22sp"
-        android:background="@drawable/circle_background"
-        android:elevation="4dp" />
-
-    <!-- Close Button -->
-    <Button
-        android:id="@+id/floating_close"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
         android:layout_alignParentEnd="true"
         android:layout_alignParentTop="true"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="8dp"
-        android:text="×"
-        android:textColor="#FFFFFF"
-        android:textSize="18sp"
-        android:background="@drawable/button_close_style"
-        android:elevation="4dp" />
+        android:background="@drawable/ribbon_background"
+        android:elevation="1dp" />
 
-    <!-- TextView for floating text -->
-    <TextView
-        android:id="@+id/floating_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/floating_close"
-        android:layout_marginTop="12dp"
-        android:text="Floating Text"
-        android:textSize="18sp"
-        android:textColor="#333333"
-        android:fontFamily="@font/roboto_medium"
-        android:lineSpacingExtra="4dp" />
+    <!-- Top bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_alignParentTop="true"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:elevation="5dp"
+        >
 
-    <!-- More Button -->
-    <Button
-        android:id="@+id/floating_more"
-        android:layout_width="wrap_content"
+        <!-- App Icon -->
+        <ImageView
+            android:id="@+id/floating_app_icon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@mipmap/ic_launcher"
+            android:scaleType="centerCrop"/>
+
+        <!-- Invisible spacer takes up space -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Status Emoji -->
+        <TextView
+            android:id="@+id/floating_status"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text=""
+            android:textSize="22sp"
+            android:background="@drawable/circle_background" />
+
+        <!-- Invisible spacer takes up space -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Close Button -->
+        <Button
+            android:id="@+id/floating_close"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:text="×"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:background="@drawable/button_close_style"/>
+
+    </LinearLayout>
+
+    <!-- Content container with padding for lower elements -->
+    <RelativeLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/floating_text"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="12dp"
-        android:text="More..."
-        android:textColor="#FFFFFF"
-        android:background="@drawable/button_more_style"
-        android:elevation="4dp"
-        android:visibility="gone" /> <!-- Hidden by default -->
+        android:layout_below="@id/blue_ribbon"
+        android:padding="16dp">
+
+        <!-- TextView for floating text -->
+        <TextView
+            android:id="@+id/floating_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_marginTop="12dp"
+            android:text="Floating Text"
+            android:textSize="18sp"
+            android:textColor="#333333"
+            android:fontFamily="@font/roboto_medium"
+            android:lineSpacingExtra="4dp" />
+
+        <!-- More Button -->
+        <Button
+            android:id="@+id/floating_more"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/floating_text"
+            android:layout_alignParentStart="true"
+            android:layout_marginBottom="6dp"
+            android:text="More..."
+            android:textColor="#FFFFFF"
+            android:background="@drawable/button_more_style"
+            android:elevation="4dp"
+            android:visibility="gone" /> <!-- Hidden by default -->
+
+        <!-- Reload Button -->
+        <ImageButton
+            android:id="@+id/retry_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_below="@id/floating_text"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="6dp"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/button_reload_style"
+            android:src="@drawable/ic_reload"
+            android:scaleType="centerInside"
+            android:contentDescription="Reload"
+            android:elevation="4dp"
+            android:visibility="gone" /> <!-- Hidden by default -->
+
+    </RelativeLayout>
+
 </RelativeLayout>

@@ -95,17 +95,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       if (call.method == "handleMessage") {
         print("handleMessage received: ${call.arguments}");
         String message = call.arguments;
-        // message = "Explain this term or text VERY shortly: '$message'. "
-        //     "If the term is in [Hebrew], answer in the same language, "
-        //     "otherwise in English";
         var detailedResponse = false;
         return await _sendMessageFromPlatform(message, detailedResponse);
       } else if (call.method == "handleMoreDetails") {
         print("handleMoreDetails received: ${call.arguments}");
         String message = call.arguments;
-        // message = "Explain this term or text in a few sentences: '$message'."
-        //     "If the term is in [Hebrew], answer in the same language, "
-        //     "otherwise in English";
         var detailedResponse = true;
         return await _sendMessageFromPlatform(message, detailedResponse);
       }

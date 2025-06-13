@@ -69,14 +69,14 @@ class MainActivity: FlutterActivity() {
         // Cache the engine for reuse in your service
         FlutterEngineCache.getInstance().put("flutter_engine_id", flutterEngine)
 
-        // Create and cache a second, headless engine for YourFloatingService:
-        val bgEngine = FlutterEngine(this).apply {
-              // Start the Dart entrypoint immediately
-           dartExecutor.executeDartEntrypoint(
-                 DartExecutor.DartEntrypoint.createDefault()
-                )
-            }
-        FlutterEngineCache.getInstance()
-          .put("bg_engine_id", bgEngine)
+//        // Create and cache a second, headless engine for YourFloatingService:
+//        val bgEngine = FlutterEngine(this).apply {
+//              // Start the Dart entrypoint immediately
+//           dartExecutor.executeDartEntrypoint(
+//                 DartExecutor.DartEntrypoint.createDefault()
+//                )
+//            }
+//        FlutterEngineCache.getInstance()
+//          .put("bg_engine_id", bgEngine)
     }
 }

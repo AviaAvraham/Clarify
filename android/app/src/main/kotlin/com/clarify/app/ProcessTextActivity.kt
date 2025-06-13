@@ -57,15 +57,15 @@ class ProcessTextActivity : Activity() {
 
 
     private fun preWarmBackgroundEngine() {
-      val cache = FlutterEngineCache.getInstance()
-      if (cache.get("bg_engine_id") == null) {
-        val bgEngine = FlutterEngine(this).apply {
-          dartExecutor.executeDartEntrypoint(
-            DartExecutor.DartEntrypoint.createDefault()
-          )
-        }
-        cache.put("bg_engine_id", bgEngine)
-        Log.d("ProcessTextActivity", "Pre-warmed bg_engine_id")
-      }
+//      val cache = FlutterEngineCache.getInstance()
+//      if (cache.get("bg_engine_id") == null) {
+//        val bgEngine = FlutterEngine(this).apply {
+//          dartExecutor.executeDartEntrypoint(
+//            DartExecutor.DartEntrypoint.createDefault()
+//          )
+//        }
+//        cache.put("bg_engine_id", bgEngine)
+//        Log.d("ProcessTextActivity", "Pre-warmed bg_engine_id")
+//      }
     }
 }

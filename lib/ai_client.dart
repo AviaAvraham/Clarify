@@ -35,7 +35,11 @@ class AIClient {
         url,
         headers: headers,
         body: body,
-      );
+      ).timeout(const Duration(seconds: 10), onTimeout: () {
+        // Handle timeout
+        print("Request timed out");
+        throw "Request timed out";
+      });
       final endTime = DateTime.now();
       print("got response!");
       final duration = endTime.difference(startTime);
@@ -74,6 +78,15 @@ class AIClient {
     //print(body);
     if (response.statusCode == 200) {
       print('Request successful!');
+      print(response.body);
+      print(jsonDecode(response.body)["is_error"]);
+      if (jsonDecode(response.body)["is_error"]) {
+        var errorMessage = jsonDecode(response.body)["error"];
+        if (errorMessage == null) {
+          errorMessage = "Unknown error";
+        }
+        throw errorMessage;
+      }
       return jsonDecode(response.body)["message"];
     } else {
       return 'Request failed with status code ${response.statusCode}';

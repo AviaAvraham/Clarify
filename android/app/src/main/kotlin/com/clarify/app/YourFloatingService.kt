@@ -10,6 +10,10 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
+import android.widget.ImageButton
+import android.os.Handler
+import android.os.Looper
+import android.graphics.Color
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
@@ -25,19 +29,20 @@ class YourFloatingService : Service() {
     private val FAIL_EMOJI = "\uD83E\uDEE0";
     private val SUCCESS_EMOJI = "\uD83E\uDDD0";
 
-    private lateinit var flutterEngine: FlutterEngine
+    companion object {
+        // Create a static Flutter engine that persists across service calls
+        private var flutterEngine: FlutterEngine? = null
+    }
 
-    override fun onCreate() {
-        super.onCreate()
-
-        flutterEngine = FlutterEngineCache.getInstance().get("bg_engine_id")
-            ?: FlutterEngine(this).apply {
+    private fun ensureFlutterEngine() {
+        if (flutterEngine == null) {
+            Log.d("YourFloatingService", "Creating persistent Flutter engine")
+            flutterEngine = FlutterEngine(this).apply {
                 dartExecutor.executeDartEntrypoint(
                     DartExecutor.DartEntrypoint.createDefault()
                 )
-            }.also {
-                FlutterEngineCache.getInstance().put("bg_engine_id", it)
             }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -82,6 +87,17 @@ class YourFloatingService : Service() {
         // Hide the 'more' button - only noticeable when we click it
         val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
         moreButton.visibility = View.GONE
+        val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
+        // reloadButton.visibility = View.GONE
+        reloadButton.apply {
+            clearAnimation()
+            animate().cancel()
+
+            visibility = View.GONE
+            alpha = 0f
+            isClickable = false // Disable click until the animation ends
+            // isEnabled = false // Disable the button to prevent all touch events
+        }
         updateFloatingView("", LOADING_EMOJI)
 
         flutterEngine?.let { engine ->
@@ -98,15 +114,43 @@ class YourFloatingService : Service() {
                         val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
                         moreButton.visibility = View.VISIBLE
                     }
+                    val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
+                    // Show the reload button after 5s delay, to avoid being rate limited
+                    reloadButton.visibility = View.VISIBLE
+                    reloadButton.animate().alpha(1f).setDuration(5000).withEndAction {
+                        reloadButton.animate()
+                            .scaleX(1.05f)
+                            .scaleY(1.05f)
+                            .setDuration(150)
+                            .withEndAction {
+                                reloadButton.animate()
+                                    .scaleX(1f)
+                                    .scaleY(1f)
+                                    .setDuration(150)
+                                    .withEndAction {
+                                        reloadButton.isClickable = true
+                                    }
+                                    .start()
+                            }
+                            .start()
+                    }.start()
                     Log.d("YourFloatingService", "Dart method '$methodName' execution time: $elapsedTime ms")
                 }
                 override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
                     Log.d("YourFloatingService", "Dart method '$methodName' error: $errorCode - $errorMessage")
                     updateFloatingView("Got an error:\n$errorMessage", FAIL_EMOJI)
+
+                    val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        reloadButton.visibility = View.VISIBLE
+                    }, 3000) // Hide the reload button after 3 seconds
                 }
                 override fun notImplemented() {
                     Log.d("YourFloatingService", "Dart method '$methodName' not implemented")
-                    updateFloatingView("Method not implemented", FAIL_EMOJI)
+                    updateFloatingView("Unexpected error: Method not implemented $methodName", FAIL_EMOJI)
+
+                    val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
+                    reloadButton.visibility = View.VISIBLE
                 }
             })
         }
@@ -122,6 +166,7 @@ class YourFloatingService : Service() {
 
     private fun createFloatingView(text: String) {
 
+        ensureFlutterEngine()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         // Add a background view to detect outside clicks
@@ -159,6 +204,17 @@ class YourFloatingService : Service() {
         val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
         moreButton.setOnClickListener {
             callDartMethodForMore(text)
+        }
+
+        val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
+        reloadButton.setOnClickListener {
+            if (moreButton.visibility == View.VISIBLE) {
+                callDartMethodForMessage(text)
+            }
+            else
+            {
+                callDartMethodForMore(text)
+            }
         }
 
         // Configure layout params for the floating view
