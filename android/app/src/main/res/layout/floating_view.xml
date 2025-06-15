@@ -1,6 +1,6 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:background="@drawable/border_background">
 
     <!-- Blue Ribbon behind top icons -->
@@ -81,7 +81,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="6dp"
             android:text="Floating Text"
             android:textSize="18sp"
             android:textColor="#333333"
@@ -97,8 +97,24 @@
             android:layout_alignParentStart="true"
             android:layout_marginBottom="6dp"
             android:text="More..."
+            android:textAllCaps="false"
             android:textColor="#FFFFFF"
             android:background="@drawable/button_more_style"
+            android:elevation="4dp"
+            android:visibility="gone" /> <!-- Hidden by default -->
+
+        <!-- Copy Button -->
+        <ImageButton
+            android:id="@+id/copy_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_below="@id/floating_text"
+            android:layout_alignParentEnd="true"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/transparent_background"
+            android:src="@drawable/ic_copy"
+            android:scaleType="centerInside"
+            android:contentDescription="Copy"
             android:elevation="4dp"
             android:visibility="gone" /> <!-- Hidden by default -->
 
@@ -108,10 +124,9 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_below="@id/floating_text"
-            android:layout_alignParentEnd="true"
-            android:layout_marginEnd="6dp"
+            android:layout_toStartOf="@id/copy_button"
             android:layout_marginBottom="6dp"
-            android:background="@drawable/button_reload_style"
+            android:background="@drawable/transparent_background"
             android:src="@drawable/ic_reload"
             android:scaleType="centerInside"
             android:contentDescription="Reload"

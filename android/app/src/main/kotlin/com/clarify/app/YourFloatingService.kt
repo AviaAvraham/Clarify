@@ -8,15 +8,19 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.widget.Button
 import android.widget.TextView
 import android.widget.ImageButton
+import android.widget.Toast
 import android.os.Handler
 import android.os.Looper
 import android.graphics.Color
 import com.clarify.app.AIClient
 import android.app.Activity
 import android.os.Bundle
+import android.graphics.Rect
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -85,6 +89,9 @@ class YourFloatingService : Service() {
             isClickable = false // Disable click until the animation ends
             // isEnabled = false // Disable the button to prevent all touch events
         }
+
+        val copyButton = floatingView!!.findViewById<ImageButton>(R.id.copy_button)
+        copyButton.visibility = View.GONE
         updateFloatingView("", LOADING_EMOJI)
 
         CoroutineScope(Dispatchers.Main).launch {
@@ -105,24 +112,35 @@ class YourFloatingService : Service() {
                     moreButton.visibility = View.VISIBLE
                 }
                 // Show the reload button after 5s delay, to avoid being rate limited
-                reloadButton.visibility = View.VISIBLE
-                reloadButton.animate().alpha(1f).setDuration(5000).withEndAction {
+                Handler(Looper.getMainLooper()).postDelayed({
+                    reloadButton.visibility = View.VISIBLE
+                    reloadButton.alpha = 0f // Ensure it's transparent before fading in
+
                     reloadButton.animate()
-                        .scaleX(1.05f)
-                        .scaleY(1.05f)
-                        .setDuration(150)
+                        .alpha(1f)
+                        .setDuration(300) // Short fade in (300ms)
                         .withEndAction {
                             reloadButton.animate()
                                 .scaleX(1f)
                                 .scaleY(1f)
                                 .setDuration(150)
                                 .withEndAction {
-                                    reloadButton.isClickable = true
+                                    reloadButton.animate()
+                                        .scaleX(1f)
+                                        .scaleY(1f)
+                                        .setDuration(150)
+                                        .withEndAction {
+                                            reloadButton.isClickable = true
+                                        }
+                                        .start()
                                 }
                                 .start()
                         }
                         .start()
-                }.start()
+                }, 3000) // Delay for 3 seconds
+
+
+                copyButton.visibility = View.VISIBLE
                 Log.d("YourFloatingService", "AI call execution time: $elapsedTime ms")
             } catch (e: Exception) {
                 val errorMessage = e.message ?: "Unknown error"
@@ -169,40 +187,165 @@ class YourFloatingService : Service() {
         val inflater = LayoutInflater.from(this)
         floatingView = inflater.inflate(R.layout.floating_view, null)
 
-        // Set the text
-        val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-        textView.text = "Looking up '$text'..."
-
-        // Add a close button
-        val closeButton = floatingView!!.findViewById<Button>(R.id.floating_close)
-        closeButton.setOnClickListener {
-            stopSelf() // Stop the service and remove the floating view
-        }
-
-        val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
-        moreButton.setOnClickListener {
-            callDartMethodForMore(text)
-        }
-
-        val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
-        reloadButton.setOnClickListener {
-            if (moreButton.visibility == View.VISIBLE) {
-                callDartMethodForMessage(text)
-            }
-            else
-            {
-                callDartMethodForMore(text)
-            }
-        }
+        setupButtons(text)
 
         // Configure layout params for the floating view
         val layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             android.graphics.PixelFormat.TRANSLUCENT
         )
+
+        var initialX = 0
+        var initialY = 0
+        var initialTouchX = 0f
+        var initialTouchY = 0f
+
+
+        floatingView!!.post {
+            val baseTextSize = 16f
+            val minScale = 0.5f
+            val maxScale = 1.0f // no scaling above initial size
+            var currentScale = 1f
+            val originalWidth = floatingView!!.width
+            val originalHeight = floatingView!!.height
+
+            val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
+
+            val scaleGestureDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    currentScale *= detector.scaleFactor
+                    currentScale = currentScale.coerceIn(minScale, maxScale)
+                    println("Current scale: $currentScale")
+
+                    floatingView!!.scaleX = currentScale
+                    floatingView!!.scaleY = currentScale
+
+                    /*
+                    Things here work weird.
+                    Because we scale the view, we need to allow the user touch outside the view.
+                    For the width - it works fine, but the height is a bit weird and becomes too small
+
+                    Instead, and perhaps this is better, we hide the buttons, which allow for
+                    more space. Weird, but whatever works
+                     */
+                    val scaledWidth = (originalWidth * currentScale).toInt()
+                    layoutParams.width = scaledWidth
+                    windowManager.updateViewLayout(floatingView, layoutParams)
+
+                    if (currentScale < 1.0f) {
+                        floatingView!!.findViewById<Button>(R.id.floating_more).visibility = View.GONE
+                        floatingView!!.findViewById<ImageButton>(R.id.retry_button).visibility = View.GONE
+                        floatingView!!.findViewById<ImageButton>(R.id.copy_button).visibility = View.GONE
+                    } else {
+                        floatingView!!.findViewById<Button>(R.id.floating_more).visibility = View.VISIBLE
+                        floatingView!!.findViewById<ImageButton>(R.id.retry_button).visibility = View.VISIBLE
+                        floatingView!!.findViewById<ImageButton>(R.id.copy_button).visibility = View.VISIBLE
+                    }
+
+                    return true
+                }
+            })
+
+            floatingView!!.setOnTouchListener { _, event ->
+                scaleGestureDetector.onTouchEvent(event)
+
+                if (scaleGestureDetector.isInProgress) {
+                    // If scaling is in progress, ignore other touch events
+                    return@setOnTouchListener true
+                }
+
+                // Movement code with proper bounds checking
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        val touchX = event.x
+                        val touchY = event.y
+
+                        /*
+                        Since the view is scaled, we need to convert touch coordinates to where they
+                        would be in an unscaled view - the location of the button doesn't change
+                        when we scale like we do. We just visually scale the view.
+                        GPT can't do math, so I figured it out myself. this is just a difference
+                        from the center, and scaled accordingly, try to imagine with scaling of
+                        0.5x so it makes more sense - if I clicked some place on the right, and
+                        the view is scaled to 0.5x, the real location of the button is twice as far
+                         */
+
+                        // Get the center of the view (pivot point)
+                        val centerX = floatingView!!.width / 2f
+                        val centerY = floatingView!!.height / 2f
+
+                        // Convert touch coords to button location (the button is unaffected by scaling)
+                        val x = (touchX - centerX) * (1/ currentScale) + centerX
+                        val y = (touchY - centerY) * (1/ currentScale) + centerY
+
+                        // Find what got clicked
+                        val button = floatingView!!.findViewById<Button>(R.id.floating_close)
+                        val buttonBounds = Rect()
+                        button.getHitRect(buttonBounds)
+
+                        if (buttonBounds.contains(x.toInt(), y.toInt())) {
+                            button.performClick()
+                            return@setOnTouchListener true
+                        }
+                        // End of weird
+
+                        initialX = layoutParams.x
+                        initialY = layoutParams.y
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (!scaleGestureDetector.isInProgress) {
+                            val newX = initialX + (event.rawX - initialTouchX).toInt()
+                            val newY = initialY + (event.rawY - initialTouchY).toInt()
+
+                            // Get screen dimensions
+                            val screenWidth = resources.displayMetrics.widthPixels
+                            val screenHeight = resources.displayMetrics.heightPixels
+
+                            // Use actual view dimensions instead of layout params
+                            val actualWidth = floatingView!!.width
+                            val actualHeight = floatingView!!.height
+
+                            // Calculate visual dimensions after scaling
+                            val visualWidth = (actualWidth * currentScale).toInt()
+                            val visualHeight = (actualHeight * currentScale).toInt()
+                            val horizontalOffset = (actualWidth - visualWidth) / 2// + 60
+                            val verticalOffset = (actualHeight - visualHeight) / 2
+
+                            var leftBound = -horizontalOffset
+                            var rightBound = screenWidth - horizontalOffset - visualWidth
+
+                            val weirdOffset = (leftBound + rightBound) / 2 // leftBound is usually 0, but whatever
+                            leftBound -= weirdOffset
+                            rightBound -= weirdOffset
+
+                            val topBound = -verticalOffset
+                            val bottomBound = screenHeight - actualHeight + verticalOffset
+
+                            // Apply bounds
+                            layoutParams.x = newX.coerceIn(leftBound, rightBound)
+                            layoutParams.y = newY.coerceIn(topBound, bottomBound)
+
+//                            println("Screen: ${screenWidth}x${screenHeight}")
+//                            println("Actual view: ${actualWidth}x${actualHeight}")
+//                            println("Visual: ${visualWidth}x${visualHeight}")
+//                            println("Calculated bounds - Left: $leftBound, Right: $rightBound")
+//                            println("Current position: x=${layoutParams.x}, y=${layoutParams.y}")
+//                            println("Raw touch: ${event.rawX}, Calculated newX: $newX")
+
+                            windowManager.updateViewLayout(floatingView, layoutParams)
+                        }
+                        true
+                    }
+                    else -> false
+                }
+            }
+        }
 
         layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         layoutParams.x = 0
@@ -212,6 +355,65 @@ class YourFloatingService : Service() {
         windowManager.addView(floatingView, layoutParams)
         callDartMethodForMessage(text) // Ensure this line executes
         Log.d("YourFloatingService", "dart method called")
+    }
+
+    private fun setupButtons(text: String) {
+        // Set the text
+        val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
+        textView.text = "Looking up '$text'..."
+
+        val closeButton = floatingView!!.findViewById<Button>(R.id.floating_close)
+        closeButton.setOnClickListener { stopSelf() }
+
+        val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
+        moreButton.setOnClickListener { callDartMethodForMore(text) }
+
+        val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
+        reloadButton.setOnClickListener {
+            if (moreButton.visibility == View.VISIBLE) {
+                callDartMethodForMessage(text)
+            } else {
+                callDartMethodForMore(text)
+            }
+        }
+
+        val copyButton = floatingView!!.findViewById<ImageButton>(R.id.copy_button)
+        copyButton.setOnClickListener {
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clip = android.content.ClipData.newPlainText(null, textView.text.toString())
+            clipboard.setPrimaryClip(clip)
+
+            // Copy button animation
+            copyButton.animate()
+                .scaleX(0f)
+                .scaleY(0f)
+                .setDuration(150)
+                .withEndAction {
+                    copyButton.setImageResource(R.drawable.ic_check)
+                    copyButton.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(150)
+                        .start()
+                }
+                .start()
+
+            Handler(Looper.getMainLooper()).postDelayed({
+                copyButton.animate()
+                    .scaleX(0f)
+                    .scaleY(0f)
+                    .setDuration(150)
+                    .withEndAction {
+                        copyButton.setImageResource(R.drawable.ic_copy)
+                        copyButton.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(150)
+                            .start()
+                    }
+                    .start()
+            }, 1500)
+        }
     }
 
     override fun onDestroy() {
