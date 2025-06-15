@@ -13,13 +13,8 @@ import android.view.ScaleGestureDetector
 import android.widget.Button
 import android.widget.TextView
 import android.widget.ImageButton
-import android.widget.Toast
 import android.os.Handler
 import android.os.Looper
-import android.graphics.Color
-import com.clarify.app.AIClient
-import android.app.Activity
-import android.os.Bundle
 import android.graphics.Rect
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,19 +24,20 @@ import kotlinx.coroutines.launch
 class YourFloatingService : Service() {
 
     private var floatingView: View? = null
-    private var backgroundView: View? = null
     private lateinit var windowManager: WindowManager
     private val LOADING_EMOJI = "\uD83E\uDD14";
     private val FAIL_EMOJI = "\uD83E\uDEE0";
     private val SUCCESS_EMOJI = "\uD83E\uDDD0";
     private val aiClient = AIClient()
+    private var hideBottomButtons = false
+    private var detailedResponse: Boolean = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val text = intent?.getStringExtra("extra_text") ?: "No text"
 
         if (floatingView != null) {
             Log.d("YourFloatingService", "Floating view already exists, updating content.")
-            callDartMethodForMessage(text) // Ensure this line executes
+            callDartMethod(text) // Ensure this line executes
             return START_STICKY
         }
 
@@ -69,17 +65,16 @@ class YourFloatingService : Service() {
         }
     }
 
-    private fun callDartMethod(message: String, showMoreButton : Boolean = false)
+    private fun callDartMethod(message: String)
     {
         // time measurement
          val startTime = System.currentTimeMillis()
         Log.d("YourFloatingService", "Attempting to call AI with message: $message")
 
-        // Hide the 'more' button - only noticeable when we click it
+        // Hide the 'more' button
         val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
         moreButton.visibility = View.GONE
         val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
-        // reloadButton.visibility = View.GONE
         reloadButton.apply {
             clearAnimation()
             animate().cancel()
@@ -97,9 +92,9 @@ class YourFloatingService : Service() {
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 println("Calling AI model...")
-                // if showMoreButton is true we want a non-detailed response
-                // also, if the server fails, callModel will throw
-                val response = aiClient.callModel(message, !showMoreButton)
+
+                // if the server fails, callModel will throw
+                val response = aiClient.callModel(message, detailedResponse)
                 println("AI Response: $response")
 
                 val endTime = System.currentTimeMillis()
@@ -107,13 +102,16 @@ class YourFloatingService : Service() {
 
                 updateFloatingView(response /* + "(in " + elapsedTime + "ms)"*/, SUCCESS_EMOJI)
 
-                if (showMoreButton)
+                if (!detailedResponse && !hideBottomButtons)
                 {
                     moreButton.visibility = View.VISIBLE
                 }
+
                 // Show the reload button after 5s delay, to avoid being rate limited
                 Handler(Looper.getMainLooper()).postDelayed({
-                    reloadButton.visibility = View.VISIBLE
+                    if (!hideBottomButtons) {
+                        reloadButton.visibility = View.VISIBLE
+                    }
                     reloadButton.alpha = 0f // Ensure it's transparent before fading in
 
                     reloadButton.animate()
@@ -139,8 +137,8 @@ class YourFloatingService : Service() {
                         .start()
                 }, 3000) // Delay for 3 seconds
 
-
-                copyButton.visibility = View.VISIBLE
+                if (!hideBottomButtons)
+                    copyButton.visibility = View.VISIBLE
                 Log.d("YourFloatingService", "AI call execution time: $elapsedTime ms")
             } catch (e: Exception) {
                 val errorMessage = e.message ?: "Unknown error"
@@ -153,35 +151,8 @@ class YourFloatingService : Service() {
         }
     }
 
-    private fun callDartMethodForMessage(message: String) {
-        callDartMethod(message, showMoreButton = true)
-    }
-
-    private fun callDartMethodForMore(message: String) {
-        callDartMethod(message)
-    }
-
     private fun createFloatingView(text: String) {
-
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-
-        // Add a background view to detect outside clicks
-        backgroundView = View(this).apply {
-            setBackgroundColor(0x00000000) // Fully transparent
-            setOnClickListener {
-                stopSelf() // Close the floating window when background is clicked
-            }
-        }
-
-        val backgroundParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            android.graphics.PixelFormat.TRANSLUCENT
-        )
-        backgroundParams.gravity = Gravity.TOP or Gravity.START
-        windowManager.addView(backgroundView, backgroundParams)
 
         // Inflate the floating view layout
         val inflater = LayoutInflater.from(this)
@@ -198,21 +169,87 @@ class YourFloatingService : Service() {
             android.graphics.PixelFormat.TRANSLUCENT
         )
 
-        var initialX = 0
-        var initialY = 0
-        var initialTouchX = 0f
-        var initialTouchY = 0f
+        layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+        layoutParams.x = 0
+        layoutParams.y = 100
 
+        setupScaleAndDrag(layoutParams)
 
+        // Add the floating view to the window
+        windowManager.addView(floatingView, layoutParams)
+        callDartMethod(text) // Ensure this line executes
+        Log.d("YourFloatingService", "dart method called")
+    }
+
+    private fun setupButtons(text: String) {
+        val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
+        textView.text = "Looking up '$text'..."
+
+        val closeButton = floatingView!!.findViewById<Button>(R.id.floating_close)
+        closeButton.setOnClickListener { stopSelf() }
+
+        val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
+        moreButton.setOnClickListener {
+            detailedResponse = true
+            callDartMethod(text)
+        }
+
+        val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
+        reloadButton.setOnClickListener {
+            callDartMethod(text)
+        }
+
+        val copyButton = floatingView!!.findViewById<ImageButton>(R.id.copy_button)
+        copyButton.setOnClickListener {
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clip = android.content.ClipData.newPlainText(null, textView.text.toString())
+            clipboard.setPrimaryClip(clip)
+
+            // Copy button animation
+            copyButton.animate()
+                .scaleX(0f)
+                .scaleY(0f)
+                .setDuration(150)
+                .withEndAction {
+                    copyButton.setImageResource(R.drawable.ic_check)
+                    copyButton.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(150)
+                        .start()
+                }
+                .start()
+
+            Handler(Looper.getMainLooper()).postDelayed({
+                copyButton.animate()
+                    .scaleX(0f)
+                    .scaleY(0f)
+                    .setDuration(150)
+                    .withEndAction {
+                        copyButton.setImageResource(R.drawable.ic_copy)
+                        copyButton.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(150)
+                            .start()
+                    }
+                    .start()
+            }, 1500)
+        }
+    }
+
+    private fun setupScaleAndDrag(layoutParams: WindowManager.LayoutParams) {
         floatingView!!.post {
-            val baseTextSize = 16f
             val minScale = 0.5f
             val maxScale = 1.0f // no scaling above initial size
             var currentScale = 1f
             val originalWidth = floatingView!!.width
-            val originalHeight = floatingView!!.height
+            // val originalHeight = floatingView!!.height
 
-            val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
+            var initialX = 0
+            var initialY = 0
+            var initialTouchX = 0f
+            var initialTouchY = 0f
 
             val scaleGestureDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
                 override fun onScale(detector: ScaleGestureDetector): Boolean {
@@ -237,12 +274,15 @@ class YourFloatingService : Service() {
 
                     if (currentScale < 1.0f) {
                         floatingView!!.findViewById<Button>(R.id.floating_more).visibility = View.GONE
-                        floatingView!!.findViewById<ImageButton>(R.id.retry_button).visibility = View.GONE
                         floatingView!!.findViewById<ImageButton>(R.id.copy_button).visibility = View.GONE
+                        floatingView!!.findViewById<ImageButton>(R.id.retry_button).visibility = View.GONE
+                        hideBottomButtons = true
                     } else {
-                        floatingView!!.findViewById<Button>(R.id.floating_more).visibility = View.VISIBLE
-                        floatingView!!.findViewById<ImageButton>(R.id.retry_button).visibility = View.VISIBLE
+                        if (!detailedResponse)
+                            floatingView!!.findViewById<Button>(R.id.floating_more).visibility = View.VISIBLE
                         floatingView!!.findViewById<ImageButton>(R.id.copy_button).visibility = View.VISIBLE
+                        floatingView!!.findViewById<ImageButton>(R.id.retry_button).visibility = View.VISIBLE
+                        hideBottomButtons = false
                     }
 
                     return true
@@ -346,86 +386,14 @@ class YourFloatingService : Service() {
                 }
             }
         }
-
-        layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-        layoutParams.x = 0
-        layoutParams.y = 100
-
-        // Add the floating view to the window
-        windowManager.addView(floatingView, layoutParams)
-        callDartMethodForMessage(text) // Ensure this line executes
-        Log.d("YourFloatingService", "dart method called")
-    }
-
-    private fun setupButtons(text: String) {
-        // Set the text
-        val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-        textView.text = "Looking up '$text'..."
-
-        val closeButton = floatingView!!.findViewById<Button>(R.id.floating_close)
-        closeButton.setOnClickListener { stopSelf() }
-
-        val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
-        moreButton.setOnClickListener { callDartMethodForMore(text) }
-
-        val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
-        reloadButton.setOnClickListener {
-            if (moreButton.visibility == View.VISIBLE) {
-                callDartMethodForMessage(text)
-            } else {
-                callDartMethodForMore(text)
-            }
-        }
-
-        val copyButton = floatingView!!.findViewById<ImageButton>(R.id.copy_button)
-        copyButton.setOnClickListener {
-            val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            val clip = android.content.ClipData.newPlainText(null, textView.text.toString())
-            clipboard.setPrimaryClip(clip)
-
-            // Copy button animation
-            copyButton.animate()
-                .scaleX(0f)
-                .scaleY(0f)
-                .setDuration(150)
-                .withEndAction {
-                    copyButton.setImageResource(R.drawable.ic_check)
-                    copyButton.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(150)
-                        .start()
-                }
-                .start()
-
-            Handler(Looper.getMainLooper()).postDelayed({
-                copyButton.animate()
-                    .scaleX(0f)
-                    .scaleY(0f)
-                    .setDuration(150)
-                    .withEndAction {
-                        copyButton.setImageResource(R.drawable.ic_copy)
-                        copyButton.animate()
-                            .scaleX(1f)
-                            .scaleY(1f)
-                            .setDuration(150)
-                            .start()
-                    }
-                    .start()
-            }, 1500)
-        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // Remove the floating view and background view if they exist
+        // Remove the floating view
         if (floatingView != null) {
             windowManager.removeView(floatingView)
             floatingView = null
-        }
-        if (backgroundView != null) {
-            windowManager.removeView(backgroundView)
-            backgroundView = null
         }
     }
 
