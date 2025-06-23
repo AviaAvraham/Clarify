@@ -1,4 +1,4 @@
-package com.clarify.app // Ensure this matches your app's package name
+package com.clarify.ai // Ensure this matches your app's package name
 
 import android.content.Intent
 import android.os.Bundle
@@ -15,7 +15,7 @@ import io.flutter.embedding.engine.dart.DartExecutor.DartEntrypoint
 
 class MainActivity: FlutterActivity() {
     // Define the channel name
-    private val CHANNEL = "com.clarify.app/floating" // Use your actual package name
+    private val CHANNEL = "com.clarify.ai/floating" // Use your actual package name
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,7 +26,7 @@ class MainActivity: FlutterActivity() {
                 when (call.method) {
 //                    "startFloatingService" -> {
 //                        Log.d("MainActivity", "Starting floating service...")
-//                        startService(Intent(this, YourFloatingService::class.java))
+//                        startService(Intent(this, FloatingService::class.java))
 //                        result.success(null)
 //                    }
                     "checkOverlayPermission" -> {

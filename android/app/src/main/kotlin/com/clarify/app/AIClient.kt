@@ -1,4 +1,4 @@
-package com.clarify.app
+package com.clarify.ai
 
 import kotlinx.coroutines.*
 import okhttp3.*
@@ -76,6 +76,15 @@ class AIClient {
             .replace("'", "")
             .replace("\n", " ")
             .replace("\\n", " ")
+
+        if (cleanMessage.isBlank()) {
+            throw Exception("Please enter a valid message.")
+        }
+
+        if (cleanMessage.length > 70)
+        {
+            throw Exception("Message is too long, please try again with a shorter message.")
+        }
 
         val body = """{"term": "$cleanMessage"}"""
 

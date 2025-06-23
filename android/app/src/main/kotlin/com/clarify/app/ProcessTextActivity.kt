@@ -1,4 +1,4 @@
-package com.clarify.app
+package com.clarify.ai
 
 import android.app.Activity
 import android.content.Intent
@@ -21,6 +21,7 @@ class ProcessTextActivity : Activity() {
             // Request overlay permission
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION)
+            finish()
         } else {
             // Launch the floating view with the text
             launchFloatingService(text.toString())
@@ -36,6 +37,7 @@ class ProcessTextActivity : Activity() {
                 // Retry launching the floating view after permission is granted
                 val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT) ?: ""
                 launchFloatingService(text.toString())
+                finish()
             } else {
                 // Permission not granted, handle gracefully
                 Log.e("ProcessTextActivity", "Overlay permission denied")
@@ -45,7 +47,7 @@ class ProcessTextActivity : Activity() {
     }
 
     private fun launchFloatingService(text: String) {
-        val serviceIntent = Intent(this, YourFloatingService::class.java)
+        val serviceIntent = Intent(this, FloatingService::class.java)
         serviceIntent.putExtra("extra_text", text)
         startService(serviceIntent)
     }

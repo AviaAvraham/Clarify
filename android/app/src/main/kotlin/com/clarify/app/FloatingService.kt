@@ -1,4 +1,4 @@
-package com.clarify.app
+package com.clarify.ai
 
 import android.app.Service
 import android.content.Intent
@@ -21,7 +21,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 
-class YourFloatingService : Service() {
+class FloatingService : Service() {
+    /*
+    If I add a settings menu one day, here are some options:
+    * hide bottom buttons (copy, reload, more)
+    * detailed response by default (also hides more button)
+    * toggle tap outside to close
+    * dark mode (could be fun to put different emojis for this)
+
+    * add credits for myself and links (source code, donations, linkedIn, etc.)
+     */
 
     private var floatingView: View? = null
     private lateinit var windowManager: WindowManager
@@ -31,18 +40,19 @@ class YourFloatingService : Service() {
     private val aiClient = AIClient()
     private var hideBottomButtons = false
     private var detailedResponse: Boolean = false
+    private var term = ""
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val text = intent?.getStringExtra("extra_text") ?: "No text"
+        term = intent?.getStringExtra("extra_text") ?: "No text" // this will update if the service is already running
 
         if (floatingView != null) {
-            Log.d("YourFloatingService", "Floating view already exists, updating content.")
-            callDartMethod(text) // Ensure this line executes
+            Log.d("FloatingService", "Floating view already exists, updating content.")
+            callAI(term) // Ensure this line executes
             return START_STICKY
         }
 
-        Log.d("YourFloatingService", "Creating floating view with text: $text")
-        createFloatingView(text)
+        Log.d("FloatingService", "Creating floating view with text: $term")
+        createFloatingView()
         return START_STICKY
     }
 
@@ -51,25 +61,25 @@ class YourFloatingService : Service() {
         if (statusView != null) {
             statusView.text = emoji
         } else {
-            Log.e("YourFloatingService", "Status TextView is null. Skipping emoji update.")
+            Log.e("FloatingService", "Status TextView is null. Skipping emoji update.")
         }
 
         if (message != "")
         {
             val responseView = floatingView?.findViewById<TextView>(R.id.floating_text)
             if (responseView != null) {
-                responseView.text = message
+                responseView.text = "\u200E$message"
             } else {
-                Log.e("YourFloatingService", "Response TextView is null. Skipping text update.")
+                Log.e("FloatingService", "Response TextView is null. Skipping text update.")
             }
         }
     }
 
-    private fun callDartMethod(message: String)
+    private fun callAI(message: String)
     {
         // time measurement
          val startTime = System.currentTimeMillis()
-        Log.d("YourFloatingService", "Attempting to call AI with message: $message")
+        Log.d("FloatingService", "Attempting to call AI with message: $message")
 
         // Hide the 'more' button
         val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
@@ -139,26 +149,30 @@ class YourFloatingService : Service() {
 
                 if (!hideBottomButtons)
                     copyButton.visibility = View.VISIBLE
-                Log.d("YourFloatingService", "AI call execution time: $elapsedTime ms")
+                Log.d("FloatingService", "AI call execution time: $elapsedTime ms")
             } catch (e: Exception) {
                 val errorMessage = e.message ?: "Unknown error"
                 println("Error calling AI: $errorMessage")
                 updateFloatingView("Got an error:\n$errorMessage", FAIL_EMOJI)
                 Handler(Looper.getMainLooper()).postDelayed({
+                    moreButton.visibility = View.INVISIBLE // if made visible (why?), use hideBottomButtons
+                    copyButton.visibility = View.VISIBLE
+                    reloadButton.alpha = 1f
                     reloadButton.visibility = View.VISIBLE
+                    reloadButton.isClickable = true
                 }, 3000) // Show the reload button after 3 seconds
             }
         }
     }
 
-    private fun createFloatingView(text: String) {
+    private fun createFloatingView() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         // Inflate the floating view layout
         val inflater = LayoutInflater.from(this)
         floatingView = inflater.inflate(R.layout.floating_view, null)
 
-        setupButtons(text)
+        setupButtons()
 
         // Configure layout params for the floating view
         val layoutParams = WindowManager.LayoutParams(
@@ -177,13 +191,13 @@ class YourFloatingService : Service() {
 
         // Add the floating view to the window
         windowManager.addView(floatingView, layoutParams)
-        callDartMethod(text) // Ensure this line executes
-        Log.d("YourFloatingService", "dart method called")
+        callAI(term) // Ensure this line executes
+        Log.d("FloatingService", "AI called")
     }
 
-    private fun setupButtons(text: String) {
+    private fun setupButtons() {
         val textView = floatingView!!.findViewById<TextView>(R.id.floating_text)
-        textView.text = "Looking up '$text'..."
+        textView.text = "Looking up '$term'..."
 
         val closeButton = floatingView!!.findViewById<Button>(R.id.floating_close)
         closeButton.setOnClickListener { stopSelf() }
@@ -191,12 +205,12 @@ class YourFloatingService : Service() {
         val moreButton = floatingView!!.findViewById<Button>(R.id.floating_more)
         moreButton.setOnClickListener {
             detailedResponse = true
-            callDartMethod(text)
+            callAI(term)
         }
 
         val reloadButton = floatingView!!.findViewById<ImageButton>(R.id.retry_button)
         reloadButton.setOnClickListener {
-            callDartMethod(text)
+            callAI(term)
         }
 
         val copyButton = floatingView!!.findViewById<ImageButton>(R.id.copy_button)

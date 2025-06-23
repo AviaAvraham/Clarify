@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
@@ -65,9 +67,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   String _response = '';
   final TextEditingController _controller = TextEditingController();
   AIClient client = AIClient();
-  static const platform = MethodChannel('com.clarify.app/floating');
+  static const platform = MethodChannel('com.clarify.ai/floating');
   bool _hasOverlayPermission = false;
   bool _hasBatteryOptimization = false;
+  Timer? _debounceTimer;
 
   void _incrementCounter() {
     setState(() {
@@ -245,6 +248,42 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
 
   Future<String?> _sendMessage() async {
+    if (_debounceTimer?.isActive ?? false) {
+      // Too soon! Show a warning toast/snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Slow down! You just sent a message.',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: Colors.grey[850],
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'DISMISS',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
+      );
+
+      // Hide it after 1 second:
+      Future.delayed(const Duration(seconds: 1), () {
+        ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+      });
+
+      return "";
+    }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 5000), () {});
+
     FocusScope.of(context).unfocus();
     String response;
     if (_controller.text.isNotEmpty) {
@@ -253,11 +292,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       response = await client.callModel(message, false);
       //_controller.clear(); // Clear the input field after sending
     }
-    else
-      {
-        response = "";
-      }
-      response = response.trim();
+    else {
+      response = "";
+    }
+    response = response.trim();
     _update_response(response);
     return response;
   }
